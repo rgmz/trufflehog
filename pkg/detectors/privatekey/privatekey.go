@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	regexp "github.com/wasilibs/go-re2"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	regexp "github.com/wasilibs/go-re2"
 
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/errors"
 	"golang.org/x/crypto/ssh"
@@ -37,19 +38,20 @@ func (s Scanner) Keywords() []string {
 	return []string{"private key"}
 }
 
-// FromData will find and optionally verify Privatekey secrets in a given set of bytes.
+// FromData will find and optionally verify private key secrets in a given set of bytes.
 func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (results []detectors.Result, err error) {
 	dataStr := string(data)
 
 	matches := keyPat.FindAllString(dataStr, -1)
 	for _, match := range matches {
 		token := normalize(match)
+		fmt.Printf("normalized token is: %s\n", token)
 		if len(token) < 64 {
 			continue
 		}
 
 		s1 := detectors.Result{
-			DetectorType: detectorspb.DetectorType_PrivateKey,
+			DetectorType: s.Type(),
 			Raw:          []byte(token),
 			Redacted:     token[0:64],
 			ExtraData:    make(map[string]string),
