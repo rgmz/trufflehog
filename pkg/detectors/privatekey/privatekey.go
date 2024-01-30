@@ -51,12 +51,13 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 	matches := keyPat.FindAllString(dataStr, -1)
 	for _, match := range matches {
 		token := normalize(match)
+		fmt.Printf("normalized token is: %s\n", token)
 		if len(token) < 64 {
 			continue
 		}
 
 		s1 := detectors.Result{
-			DetectorType: detectorspb.DetectorType_PrivateKey,
+			DetectorType: s.Type(),
 			Raw:          []byte(token),
 			Redacted:     token[0:64],
 			ExtraData:    make(map[string]string),
