@@ -14,8 +14,96 @@ import (
 
 	"github.com/trufflesecurity/trufflehog/v3/pkg/common"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/engine/ahocorasick"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/pb/detectorspb"
 )
+
+func TestGitLab_Pattern(t *testing.T) {
+	d := Scanner{}
+	ahoCorasickCore := ahocorasick.NewAhoCorasickCore([]detectors.Detector{d})
+	tests := []struct {
+		name  string
+		input string
+		want  []string
+	}{
+		{
+			name:  "starts with equal",
+			input: `gitify --namespace=bigcorp -a -p projname --directory=. --gitlab_token=DLjxJRHoimUD7fj83pV1`,
+			want:  []string{"DLjxJRHoimUD7fj83pV1"},
+		},
+		{
+			name: "starts with dash",
+			input: `GITLAB_TOKEN: "-sAeerPBBPPas6NjQ23fH"
+GITLAB_ENDPOINT: "http://gitlab.com/api/v3"`,
+			want: []string{"-sAeerPBBPPas6NjQ23fH"},
+		},
+		{
+			name: "starts with underscore",
+			input: `export GITLAB_API_TOKEN=_7FD4pBsEFMfj-nxrQ52x
+export GITLAB_ROOT_URL="http://gitlab.com"`,
+			want: []string{"_7FD4pBsEFMfj-nxrQ52x"},
+		},
+		{
+			name:  "ends with dash",
+			input: `gitlab_token: "azSYob1pZ_GyAgZkjbe-",`,
+			want:  []string{"azSYob1pZ_GyAgZkjbe-"},
+		},
+		{
+			name: "ends with underscore",
+			input: `export GITLAB_TOKEN=KHbr_nFzseQajzC-u5A_
+export GITLAB_USERNAME=example.user`,
+			want: []string{"KHbr_nFzseQajzC-u5A_"},
+		},
+		{
+			name:  "",
+			input: ``,
+			want:  []string{""},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			chunkSpecificDetectors := make(map[ahocorasick.DetectorKey]detectors.Detector, 2)
+			ahoCorasickCore.PopulateMatchingDetectors(test.input, chunkSpecificDetectors)
+			if len(chunkSpecificDetectors) == 0 {
+				t.Errorf("keywords '%v' not matched by: %s", d.Keywords(), test.input)
+				return
+			}
+
+			results, err := d.FromData(context.Background(), false, []byte(test.input))
+			if err != nil {
+				t.Errorf("error = %v", err)
+				return
+			}
+
+			if len(results) != len(test.want) {
+				if len(results) == 0 {
+					t.Errorf("did not receive result")
+				} else {
+					t.Errorf("expected %d results, only received %d", len(test.want), len(results))
+				}
+				return
+			}
+
+			actual := make(map[string]struct{}, len(results))
+			for _, r := range results {
+				if len(r.RawV2) > 0 {
+					actual[string(r.RawV2)] = struct{}{}
+				} else {
+					actual[string(r.Raw)] = struct{}{}
+				}
+			}
+			expected := make(map[string]struct{}, len(test.want))
+			for _, v := range test.want {
+				expected[v] = struct{}{}
+			}
+
+			if diff := cmp.Diff(expected, actual); diff != "" {
+				t.Errorf("%s diff: (-want +got)\n%s", test.name, diff)
+			}
+		})
+	}
+}
 
 func TestGitlab_FromChunk(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)

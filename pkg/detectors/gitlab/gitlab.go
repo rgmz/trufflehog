@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	regexp "github.com/wasilibs/go-re2"
 	"io"
 	"net/http"
 	"strings"
+
+	regexp "github.com/wasilibs/go-re2"
 
 	"github.com/trufflesecurity/trufflehog/v3/pkg/common"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors"
@@ -31,7 +32,7 @@ func (Scanner) DefaultEndpoint() string { return "https://gitlab.com" }
 
 var (
 	defaultClient = common.SaneHttpClient()
-	keyPat        = regexp.MustCompile(detectors.PrefixRegex([]string{"gitlab"}) + `\b([a-zA-Z0-9\-=_]{20,22})\b`)
+	keyPat        = regexp.MustCompile(detectors.PrefixRegex([]string{"token"}) + `[^a-zA-Z0-9\-_]([a-zA-Z0-9\-=_]{20,22})(?:[^a-zA-Z0-9\-=_]|\z)`)
 )
 
 // Keywords are used for efficiently pre-filtering chunks.
