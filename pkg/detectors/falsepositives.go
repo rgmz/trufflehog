@@ -2,6 +2,7 @@ package detectors
 
 import (
 	_ "embed"
+	"fmt"
 	"math"
 	"strings"
 	"unicode"
@@ -50,12 +51,14 @@ func IsKnownFalsePositive(match string, falsePositives []FalsePositive, wordChec
 	lower := strings.ToLower(match)
 	for _, fp := range falsePositives {
 		if strings.Contains(lower, string(fp)) {
+			fmt.Printf("matched FalsePositive '%s'\n", fp)
 			return true
 		}
 	}
 
 	if wordCheck {
 		if filter.MatchFirstString(lower) != nil {
+			fmt.Printf("matched MatchFirstString\n")
 			return true
 		}
 	}

@@ -14,6 +14,7 @@ import (
 	regexp "github.com/wasilibs/go-re2"
 
 	"github.com/trufflesecurity/trufflehog/v3/pkg/common"
+	logContext "github.com/trufflesecurity/trufflehog/v3/pkg/context"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/pb/detectorspb"
 
@@ -142,24 +143,30 @@ func GetHMAC(key []byte, data []byte) []byte {
 // FromData will find and optionally verify AWS secrets in a given set of bytes.
 func (s scanner) FromData(ctx context.Context, verify bool, data []byte) (results []detectors.Result, err error) {
 	dataStr := string(data)
+	logger := logContext.AddLogger(ctx).Logger().WithName("aws")
 
 	idMatches := idPat.FindAllStringSubmatch(dataStr, -1)
 	secretMatches := secretPat.FindAllStringSubmatch(dataStr, -1)
 
 	for _, idMatch := range idMatches {
+		logger.Info("Found ID", "id", idMatch)
 		if len(idMatch) != 3 {
+			logger.Info("Skipping ID, invalid number of match groups.")
 			continue
 		}
 		resIDMatch := strings.TrimSpace(idMatch[1])
 
 		if s.skipIDs != nil {
 			if _, ok := s.skipIDs[resIDMatch]; ok {
+				logger.Info("Skipping ID, it is present in SkipIDs")
 				continue
 			}
 		}
 
 		for _, secretMatch := range secretMatches {
+			logger.Info("Found Secret", "secret", secretMatch)
 			if len(secretMatch) != 2 {
+				logger.Info("Skipping secret, invalid number of match groups.")
 				continue
 			}
 			resSecretMatch := strings.TrimSpace(secretMatch[1])
@@ -175,10 +182,12 @@ func (s scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 			}
 
 			account, err := common.GetAccountNumFromAWSID(resIDMatch)
+			logger.Info("Determined account number", "account", account)
 			if err == nil {
 				s1.ExtraData["account"] = account
 			}
 			if _, ok := thinkstCanaryList[account]; ok {
+				logger.Info("Account is thinkst canary")
 				s1.ExtraData["is_canary"] = "true"
 				s1.ExtraData["message"] = thinkstMessage
 				if verify {
@@ -195,6 +204,7 @@ func (s scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 				}
 			}
 			if _, ok := thinkstKnockoffsCanaryList[account]; ok {
+				logger.Info("Account is knockoff canary")
 				s1.ExtraData["is_canary"] = "true"
 				s1.ExtraData["message"] = thinkstKnockoffsMessage
 				if verify {
@@ -212,6 +222,7 @@ func (s scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 			}
 
 			if verify && (s1.ExtraData["is_canary"] != "true") {
+				logger.Info("Attempting to verify match")
 				isVerified, extraData, verificationErr := s.verifyMatch(ctx, resIDMatch, resSecretMatch, true)
 				s1.Verified = isVerified
 				// It'd be good to log when calculated account value does not match
@@ -231,10 +242,12 @@ func (s scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 			if !s1.Verified {
 				// Unverified results that contain common test words are probably not secrets
 				if detectors.IsKnownFalsePositive(resSecretMatch, detectors.DefaultFalsePositives, true) {
+					logger.Info("Skipping result, it is a false-positive")
 					continue
 				}
 				// Unverified results that look like hashes are probably not secrets
 				if falsePositiveSecretCheck.MatchString(resSecretMatch) {
+					logger.Info("Skipping result, it is a 40 character false-positive")
 					continue
 				}
 			}
