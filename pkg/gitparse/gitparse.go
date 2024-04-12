@@ -108,7 +108,9 @@ func (d *Diff) finalize() error { return d.contentWriter.CloseForWriting() }
 
 // Commit contains commit header info and diffs.
 type Commit struct {
-	Hash      string
+	Hash string
+	// The source of a commit, if it doesn't exist in the repository's history.
+	Source    string
 	Author    string
 	Committer string
 	Date      time.Time
@@ -230,13 +232,16 @@ func (c *Parser) RepoPath(ctx context.Context, source string, head string, abbre
 		"--date=format:%a %b %d %H:%M:%S %Y %z",
 		"--pretty=fuller", // https://git-scm.com/docs/git-log#_pretty_formats
 		"--notes",         // https://git-scm.com/docs/git-log#Documentation/git-log.txt---notesltrefgt
+		"--source",        // https://git-scm.com/docs/git-log#Documentation/git-log.txt---source
 	}
 	if abbreviatedLog {
+		// https://git-scm.com/docs/git-log#Documentation/git-log.txt---diff-filterACDMRTUXB82308203
 		args = append(args, "--diff-filter=AM")
 	}
 	if head != "" {
 		args = append(args, head)
 	} else {
+		// https://git-scm.com/docs/git-log#Documentation/git-log.txt---all
 		args = append(args, "--all")
 	}
 	for _, glob := range excludedGlobs {
@@ -323,10 +328,9 @@ func (c *Parser) FromReader(ctx context.Context, stdOut io.Reader, diffChan chan
 	outReader := bufio.NewReader(stdOut)
 	var (
 		currentCommit *Commit
-
-		totalLogSize int
+		totalLogSize  int
+		latestState   = Initial
 	)
-	var latestState = Initial
 
 	diff := func(c *Commit, opts ...diffOption) *Diff {
 		opts = append(opts, withCustomContentWriter(bufferwriter.New()))
@@ -386,10 +390,18 @@ func (c *Parser) FromReader(ctx context.Context, stdOut io.Reader, diffChan chan
 			// Create a new currentDiff and currentCommit
 			currentCommit = &Commit{Message: strings.Builder{}}
 			currentDiff = diff(currentCommit)
-			// Check that the commit line contains a hash and set it.
-			if len(line) >= 47 {
-				currentCommit.Hash = string(line[7:47])
+
+			hash, ref := parseCommitLine(line)
+			if hash == nil || ref == nil {
+				ctx.Logger().Error(
+					fmt.Errorf(`expected line to match 'commit <hash> <ref>', got "%s"`, line),
+					"Failed to parse CommitLine")
+				latestState = ParseFailure
+				continue
 			}
+
+			currentCommit.Hash = string(hash)
+			currentCommit.Source = parseSourceRef(ref)
 		case isMergeLine(isStaged, latestState, line):
 			latestState = MergeLine
 		case isAuthorLine(isStaged, latestState, line):
@@ -603,6 +615,49 @@ func isCommitLine(isStaged bool, latestState ParseState, line []byte) bool {
 		return true
 	}
 	return false
+}
+
+func parseCommitLine(line []byte) (hash []byte, ref []byte) {
+	// Check that the commit line contains a 40-character hash and set it.
+	// `commit e5575cd6f2d21d3a1a604287c7bf4a7eab2266e0\n`
+	if len(line) >= 47 {
+		hash = line[7:47]
+	}
+
+	// Check if the commit line includes branch references.
+	// `commit 2dbbb28727c7c2954438666dafba57bb8c714d3b refs/heads/fix/github-enterprise-gist\n`
+	if len(line) > 48 {
+		ref = line[48 : len(line)-1]
+	}
+
+	return
+}
+
+// ParseCommitSource s
+// https://git-scm.com/docs/git-log#Documentation/git-log.txt---source
+func parseSourceRef(ref []byte) string {
+	// Remove the `refs/heads/thog` prefix.
+	// (We don't care about refs without this prefix.)
+	ref, ok := bytes.CutPrefix(ref, []byte("refs/heads/thog/"))
+	if !ok {
+		return ""
+	}
+
+	// Handle GitHub pull requests.
+	// e.g., `pr/238/head` or `pr/1234/merge`
+	if after, ok := bytes.CutPrefix(ref, []byte("pr/")); ok {
+		prNumber := after[:bytes.Index(after, []byte("/"))]
+		return "Pull request #" + string(prNumber)
+	}
+
+	// Handle GitLab merge requests
+	// e.g., `mr/238/head` or `mr/1234/merge`
+	if after, ok := bytes.CutPrefix(ref, []byte("mr/")); ok {
+		mrNumber := after[:bytes.Index(after, []byte("/"))]
+		return "Merge request #" + string(mrNumber)
+	}
+
+	return ""
 }
 
 // Author: Bill Rich <bill.rich@trufflesec.com>

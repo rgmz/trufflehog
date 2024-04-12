@@ -60,7 +60,7 @@ type Git struct {
 	sourceName         string
 	sourceID           sources.SourceID
 	jobID              sources.JobID
-	sourceMetadataFunc func(file, email, commit, timestamp, repository string, line int64) *source_metadatapb.MetaData
+	sourceMetadataFunc func(repository, commit, ref, email, timestamp, file string, line int64) *source_metadatapb.MetaData
 	verify             bool
 	metrics            metrics
 	concurrency        *semaphore.Weighted
@@ -77,7 +77,7 @@ type metrics struct {
 // Config for a Git source.
 type Config struct {
 	Concurrency        int
-	SourceMetadataFunc func(file, email, commit, timestamp, repository string, line int64) *source_metadatapb.MetaData
+	SourceMetadataFunc func(repository, commit, ref, email, timestamp, file string, line int64) *source_metadatapb.MetaData
 
 	SourceName   string
 	JobID        sources.JobID
@@ -209,16 +209,17 @@ func (s *Source) Init(aCtx context.Context, name string, jobId sources.JobID, so
 		SkipBinaries: conn.GetSkipBinaries(),
 		SkipArchives: conn.GetSkipArchives(),
 		Concurrency:  concurrency,
-		SourceMetadataFunc: func(file, email, commit, timestamp, repository string, line int64) *source_metadatapb.MetaData {
+		SourceMetadataFunc: func(repository, commit, ref, email, timestamp, file string, line int64) *source_metadatapb.MetaData {
 			return &source_metadatapb.MetaData{
 				Data: &source_metadatapb.MetaData_Git{
 					Git: &source_metadatapb.Git{
-						Commit:     sanitizer.UTF8(commit),
-						File:       sanitizer.UTF8(file),
-						Email:      sanitizer.UTF8(email),
-						Repository: sanitizer.UTF8(repository),
-						Timestamp:  sanitizer.UTF8(timestamp),
-						Line:       line,
+						Repository:   sanitizer.UTF8(repository),
+						Commit:       sanitizer.UTF8(commit),
+						CommitSource: sanitizer.UTF8(ref),
+						Email:        sanitizer.UTF8(email),
+						Timestamp:    sanitizer.UTF8(timestamp),
+						File:         sanitizer.UTF8(file),
+						Line:         line,
 					},
 				},
 			}
@@ -419,8 +420,8 @@ func executeClone(ctx context.Context, params cloneParams) (*git.Repository, err
 		"clone", cloneURL.String(), params.clonePath,
 		// Fetch additional refs from GitHub and GitLab.
 		// https://github.com/trufflesecurity/trufflehog/issues/1588
-		"-c", "remote.origin.fetch=+refs/pull/*:refs/heads/pull/*",
-		"-c", "remote.origin.fetch=+refs/merge-requests/*:refs/heads/merge-requests/*",
+		"-c", "remote.origin.fetch=+refs/pull/*:refs/heads/thog/pr/*",
+		"-c", "remote.origin.fetch=+refs/merge-requests/*:refs/thog/mr/*",
 	}
 	gitArgs = append(gitArgs, params.args...)
 	cloneCmd := exec.Command("git", gitArgs...)
@@ -573,6 +574,7 @@ func (s *Git) ScanCommits(ctx context.Context, repo *git.Repository, path string
 			break
 		}
 
+		commitSource := diff.Commit.Source
 		email := commit.Author
 		when := commit.Date.UTC().Format("2006-01-02 15:04:05 -0700")
 
@@ -585,7 +587,7 @@ func (s *Git) ScanCommits(ctx context.Context, repo *git.Repository, path string
 			// Scan the commit metadata.
 			// See https://github.com/trufflesecurity/trufflehog/issues/2683
 			var (
-				metadata = s.sourceMetadataFunc("", email, fullHash, when, remoteURL, 0)
+				metadata = s.sourceMetadataFunc(remoteURL, fullHash, commitSource, email, when, "", 0)
 				sb       strings.Builder
 			)
 			sb.WriteString(email)
@@ -618,7 +620,7 @@ func (s *Git) ScanCommits(ctx context.Context, repo *git.Repository, path string
 
 		// Handle binary files by reading the entire file rather than using the diff.
 		if diff.IsBinary {
-			metadata := s.sourceMetadataFunc(fileName, email, fullHash, when, remoteURL, 0)
+			metadata := s.sourceMetadataFunc(remoteURL, fullHash, commitSource, email, when, fileName, 0)
 			chunkSkel := &sources.Chunk{
 				SourceName:     s.sourceName,
 				SourceID:       s.sourceID,
@@ -642,12 +644,12 @@ func (s *Git) ScanCommits(ctx context.Context, repo *git.Repository, path string
 		}
 
 		if diff.Len() > sources.ChunkSize+sources.PeekSize {
-			s.gitChunk(ctx, diff, fileName, email, fullHash, when, remoteURL, reporter)
+			s.gitChunk(ctx, diff, remoteURL, fullHash, commitSource, email, when, fileName, reporter)
 			continue
 		}
 
 		chunkData := func(d *gitparse.Diff) error {
-			metadata := s.sourceMetadataFunc(fileName, email, fullHash, when, remoteURL, int64(diff.LineStart))
+			metadata := s.sourceMetadataFunc(remoteURL, fullHash, commitSource, email, when, fileName, int64(diff.LineStart))
 
 			reader, err := d.ReadCloser()
 			if err != nil {
@@ -689,7 +691,7 @@ func (s *Git) ScanCommits(ctx context.Context, repo *git.Repository, path string
 	return nil
 }
 
-func (s *Git) gitChunk(ctx context.Context, diff *gitparse.Diff, fileName, email, hash, when, urlMetadata string, reporter sources.ChunkReporter) {
+func (s *Git) gitChunk(ctx context.Context, diff *gitparse.Diff, urlMetadata, hash, ref, email, when, fileName string, reporter sources.ChunkReporter) {
 	reader, err := diff.ReadCloser()
 	if err != nil {
 		ctx.Logger().Error(err, "error creating reader for chunk", "filename", fileName, "commit", hash, "file", diff.PathB)
@@ -708,7 +710,7 @@ func (s *Git) gitChunk(ctx context.Context, diff *gitparse.Diff, fileName, email
 			// Add oversize chunk info
 			if newChunkBuffer.Len() > 0 {
 				// Send the existing fragment.
-				metadata := s.sourceMetadataFunc(fileName, email, hash, when, urlMetadata, int64(diff.LineStart+lastOffset))
+				metadata := s.sourceMetadataFunc(urlMetadata, hash, ref, email, when, fileName, int64(diff.LineStart+lastOffset))
 				chunk := sources.Chunk{
 					SourceName:     s.sourceName,
 					SourceID:       s.sourceID,
@@ -728,7 +730,7 @@ func (s *Git) gitChunk(ctx context.Context, diff *gitparse.Diff, fileName, email
 			}
 			if len(line) > sources.ChunkSize {
 				// Send the oversize line.
-				metadata := s.sourceMetadataFunc(fileName, email, hash, when, urlMetadata, int64(diff.LineStart+offset))
+				metadata := s.sourceMetadataFunc(urlMetadata, hash, ref, email, when, fileName, int64(diff.LineStart+offset))
 				chunk := sources.Chunk{
 					SourceName:     s.sourceName,
 					SourceID:       s.sourceID,
@@ -752,7 +754,7 @@ func (s *Git) gitChunk(ctx context.Context, diff *gitparse.Diff, fileName, email
 	}
 	// Send anything still in the new chunk buffer
 	if newChunkBuffer.Len() > 0 {
-		metadata := s.sourceMetadataFunc(fileName, email, hash, when, urlMetadata, int64(diff.LineStart+lastOffset))
+		metadata := s.sourceMetadataFunc(urlMetadata, hash, ref, email, when, fileName, int64(diff.LineStart+lastOffset))
 		chunk := sources.Chunk{
 			SourceName:     s.sourceName,
 			SourceID:       s.sourceID,
@@ -842,7 +844,7 @@ func (s *Git) ScanStaged(ctx context.Context, repo *git.Repository, path string,
 		// Handle binary files by reading the entire file rather than using the diff.
 		if diff.IsBinary {
 			commitHash := plumbing.NewHash(fullHash)
-			metadata := s.sourceMetadataFunc(fileName, email, "Staged", when, urlMetadata, 0)
+			metadata := s.sourceMetadataFunc(urlMetadata, "Staged", "Staged", email, when, fileName, 0)
 			chunkSkel := &sources.Chunk{
 				SourceName:     s.sourceName,
 				SourceID:       s.sourceID,
@@ -858,7 +860,7 @@ func (s *Git) ScanStaged(ctx context.Context, repo *git.Repository, path string,
 		}
 
 		chunkData := func(d *gitparse.Diff) error {
-			metadata := s.sourceMetadataFunc(fileName, email, "Staged", when, urlMetadata, int64(diff.LineStart))
+			metadata := s.sourceMetadataFunc(urlMetadata, "Staged", "Staged", email, when, fileName, int64(diff.LineStart))
 
 			reader, err := d.ReadCloser()
 			if err != nil {
