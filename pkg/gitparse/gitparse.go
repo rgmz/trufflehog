@@ -342,6 +342,9 @@ func (c *Parser) FromReader(ctx context.Context, stdOut io.Reader, diffChan chan
 
 	defer common.RecoverWithExit(ctx)
 	defer close(diffChan)
+
+	baseLogger := ctx.Logger().WithName("gitparse")
+	logger := baseLogger
 	for {
 		if common.IsDone(ctx) {
 			break
@@ -389,12 +392,16 @@ func (c *Parser) FromReader(ctx context.Context, stdOut io.Reader, diffChan chan
 			// Check that the commit line contains a hash and set it.
 			if len(line) >= 47 {
 				currentCommit.Hash = string(line[7:47])
+				logger = baseLogger.WithValues("commit", currentCommit.Hash)
+				logger.Info("Found CommitLine")
 			}
 		case isMergeLine(isStaged, latestState, line):
 			latestState = MergeLine
 		case isAuthorLine(isStaged, latestState, line):
 			latestState = AuthorLine
 			currentCommit.Author = strings.TrimSpace(string(line[8:]))
+			logger.Info("Found AuthorLine", "author", currentCommit.Author)
+
 		case isAuthorDateLine(isStaged, latestState, line):
 			latestState = AuthorDateLine
 
@@ -408,29 +415,39 @@ func (c *Parser) FromReader(ctx context.Context, stdOut io.Reader, diffChan chan
 		case isCommitterLine(isStaged, latestState, line):
 			latestState = CommitterLine
 			currentCommit.Committer = strings.TrimSpace(string(line[8:]))
+			logger.Info("Found CommitterLine", "committer", currentCommit.Committer)
 		case isCommitterDateLine(isStaged, latestState, line):
 			latestState = CommitterDateLine
+			logger.Info("Found CommitterDateLine")
 			// NoOp
 		case isMessageStartLine(isStaged, latestState, line):
 			latestState = MessageStartLine
+			logger.Info("Found MessageStartLine")
 			// NoOp
 		case isMessageLine(isStaged, latestState, line):
 			latestState = MessageLine
 			currentCommit.Message.Write(line[4:]) // Messages are indented by 4 spaces.
 
+			logger.Info("Found MessageLine", "value", string(line))
+
 		case isMessageEndLine(isStaged, latestState, line):
 			latestState = MessageEndLine
+			logger.Info("Found MessageEndLine")
 			// NoOp
 		case isNotesStartLine(isStaged, latestState, line):
 			latestState = NotesStartLine
 
 			currentCommit.Message.WriteString("\n")
 			currentCommit.Message.Write(line)
+
+			logger.Info("Found NotesStartLine", "value", "\n"+string(line))
 		case isNotesLine(isStaged, latestState, line):
 			latestState = NotesLine
 			currentCommit.Message.Write(line[4:]) // Notes are indented by 4 spaces.
+			logger.Info("Found NotesLine", "value", string(line))
 		case isNotesEndLine(isStaged, latestState, line):
 			latestState = NotesEndLine
+			logger.Info("Found NotesEndLine")
 			// NoOp
 		case isDiffLine(isStaged, latestState, line):
 			latestState = DiffLine

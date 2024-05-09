@@ -589,6 +589,8 @@ func (s *Git) ScanCommits(ctx context.Context, repo *git.Repository, path string
 			sb.WriteString(commit.Committer)
 			sb.WriteString("\n")
 			sb.WriteString(commit.Message.String())
+
+			logger.Info("Scanning commit metadata", "data", sb.String())
 			chunk := sources.Chunk{
 				SourceName:     s.sourceName,
 				SourceID:       s.sourceID,
