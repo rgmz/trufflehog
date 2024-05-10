@@ -211,6 +211,10 @@ func TestLineChecksWithStaged(t *testing.T) {
 					CommitterDateLine,
 					[]byte("notcorrect"),
 				},
+				{
+					MessageLine,
+					[]byte("commit 9c53bd009b32cf2f0e8e3d38e312a6f7e636fd31\\n"),
+				},
 			},
 			function: isMessageLine,
 		},
