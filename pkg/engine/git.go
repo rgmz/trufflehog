@@ -15,15 +15,16 @@ import (
 // ScanGit scans any git source.
 func (e *Engine) ScanGit(ctx context.Context, c sources.GitConfig) error {
 	connection := &sourcespb.Git{
-		Head:             c.HeadRef,
-		Base:             c.BaseRef,
-		Bare:             c.Bare,
-		Uri:              c.URI,
-		ExcludeGlobs:     c.ExcludeGlobs,
-		IncludePathsFile: c.IncludePathsFile,
-		ExcludePathsFile: c.ExcludePathsFile,
-		MaxDepth:         int64(c.MaxDepth),
-		SkipBinaries:     c.SkipBinaries,
+		Head:              c.HeadRef,
+		Base:              c.BaseRef,
+		Bare:              c.Bare,
+		Uri:               c.URI,
+		ExcludeGlobs:      c.ExcludeGlobs,
+		IncludePathsFile:  c.IncludePathsFile,
+		ExcludePathsFile:  c.ExcludePathsFile,
+		MaxDepth:          int64(c.MaxDepth),
+		SkipBinaries:      c.SkipBinaries,
+		IncludeHiddenRefs: c.IncludeHiddenRefs,
 	}
 	var conn anypb.Any
 	if err := anypb.MarshalFrom(&conn, connection, proto.MarshalOptions{}); err != nil {

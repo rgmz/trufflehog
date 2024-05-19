@@ -76,6 +76,7 @@ var (
 	gitScanBranch       = gitScan.Flag("branch", "Branch to scan.").String()
 	gitScanMaxDepth     = gitScan.Flag("max-depth", "Maximum depth of commits to scan.").Int()
 	gitScanBare         = gitScan.Flag("bare", "Scan bare repository (e.g. useful while using in pre-receive hooks)").Bool()
+	gitScanHiddenRefs   = gitHiddenRefsFlag(gitScan)
 	_                   = gitScan.Flag("allow", "No-op flag for backwards compat.").Bool()
 	_                   = gitScan.Flag("entropy", "No-op flag for backwards compat.").Bool()
 	_                   = gitScan.Flag("regex", "No-op flag for backwards compat.").Bool()
@@ -96,6 +97,7 @@ var (
 	githubScanIssueComments = githubScan.Flag("issue-comments", "Include issue descriptions and comments in scan.").Bool()
 	githubScanPRComments    = githubScan.Flag("pr-comments", "Include pull request descriptions and comments in scan.").Bool()
 	githubScanGistComments  = githubScan.Flag("gist-comments", "Include gist comments in scan.").Bool()
+	gitHubScanHiddenRefs    = gitHiddenRefsFlag(githubScan)
 
 	gitlabScan = cli.Command("gitlab", "Find credentials in GitLab repositories.")
 	// TODO: Add more GitLab options
@@ -104,6 +106,7 @@ var (
 	gitlabScanToken        = gitlabScan.Flag("token", "GitLab token. Can be provided with environment variable GITLAB_TOKEN.").Envar("GITLAB_TOKEN").Required().String()
 	gitlabScanIncludePaths = gitlabScan.Flag("include-paths", "Path to file with newline separated regexes for files to include in scan.").Short('i').String()
 	gitlabScanExcludePaths = gitlabScan.Flag("exclude-paths", "Path to file with newline separated regexes for files to exclude in scan.").Short('x').String()
+	gitlabScanHiddenRefs   = gitHiddenRefsFlag(gitlabScan)
 
 	filesystemScan  = cli.Command("filesystem", "Find credentials in a filesystem.")
 	filesystemPaths = filesystemScan.Arg("path", "Path to file or directory to scan.").Strings()
@@ -178,6 +181,10 @@ var (
 	postmanCollectionPaths     = postmanScan.Flag("collection-paths", "Path to Postman collections.").Strings()
 	postmanEnvironmentPaths    = postmanScan.Flag("environment-paths", "Path to Postman environments.").Strings()
 )
+
+func gitHiddenRefsFlag(cmd *kingpin.CmdClause) *bool {
+	return cmd.Flag("hidden-refs", "test").Bool()
+}
 
 func init() {
 	for i, arg := range os.Args {
@@ -466,14 +473,15 @@ func run(state overseer.State) {
 	switch cmd {
 	case gitScan.FullCommand():
 		cfg := sources.GitConfig{
-			URI:              *gitScanURI,
-			IncludePathsFile: *gitScanIncludePaths,
-			ExcludePathsFile: *gitScanExcludePaths,
-			HeadRef:          *gitScanBranch,
-			BaseRef:          *gitScanSinceCommit,
-			MaxDepth:         *gitScanMaxDepth,
-			Bare:             *gitScanBare,
-			ExcludeGlobs:     *gitScanExcludeGlobs,
+			URI:               *gitScanURI,
+			IncludePathsFile:  *gitScanIncludePaths,
+			ExcludePathsFile:  *gitScanExcludePaths,
+			HeadRef:           *gitScanBranch,
+			BaseRef:           *gitScanSinceCommit,
+			MaxDepth:          *gitScanMaxDepth,
+			Bare:              *gitScanBare,
+			ExcludeGlobs:      *gitScanExcludeGlobs,
+			IncludeHiddenRefs: *gitScanHiddenRefs,
 		}
 		if err = e.ScanGit(ctx, cfg); err != nil {
 			logFatal(err, "Failed to scan Git.")
@@ -501,6 +509,7 @@ func run(state overseer.State) {
 			IncludeIssueComments:       *githubScanIssueComments,
 			IncludePullRequestComments: *githubScanPRComments,
 			IncludeGistComments:        *githubScanGistComments,
+			IncludeHiddenRefs:          *gitHubScanHiddenRefs,
 			Filter:                     filter,
 		}
 		if err := e.ScanGitHub(ctx, cfg); err != nil {
@@ -513,10 +522,11 @@ func run(state overseer.State) {
 		}
 
 		cfg := sources.GitlabConfig{
-			Endpoint: *gitlabScanEndpoint,
-			Token:    *gitlabScanToken,
-			Repos:    *gitlabScanRepos,
-			Filter:   filter,
+			Endpoint:          *gitlabScanEndpoint,
+			Token:             *gitlabScanToken,
+			Repos:             *gitlabScanRepos,
+			Filter:            filter,
+			IncludeHiddenRefs: *gitlabScanHiddenRefs,
 		}
 		if err := e.ScanGitLab(ctx, cfg); err != nil {
 			logFatal(err, "Failed to scan GitLab.")

@@ -657,7 +657,8 @@ func parseSourceRef(ref []byte) string {
 		return "Merge request #" + string(mrNumber)
 	}
 
-	return ""
+	// Omit the 'refs/` prefix.
+	return string(ref[5:])
 }
 
 // Author: Bill Rich <bill.rich@trufflesec.com>

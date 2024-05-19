@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/google/go-github/v62/github"
@@ -66,6 +67,7 @@ type Git struct {
 	concurrency        *semaphore.Weighted
 	skipBinaries       bool
 	skipArchives       bool
+	includeHiddenRefs  bool
 
 	parser *gitparse.Parser
 }
@@ -79,13 +81,14 @@ type Config struct {
 	Concurrency        int
 	SourceMetadataFunc func(repository, commit, ref, email, timestamp, file string, line int64) *source_metadatapb.MetaData
 
-	SourceName   string
-	JobID        sources.JobID
-	SourceID     sources.SourceID
-	SourceType   sourcespb.SourceType
-	Verify       bool
-	SkipBinaries bool
-	SkipArchives bool
+	SourceName        string
+	JobID             sources.JobID
+	SourceID          sources.SourceID
+	SourceType        sourcespb.SourceType
+	Verify            bool
+	SkipBinaries      bool
+	SkipArchives      bool
+	IncludeHiddenRefs bool
 
 	// UseCustomContentWriter indicates whether to use a custom contentWriter.
 	// When set to true, the parser will use a custom contentWriter provided through the WithContentWriter option.
@@ -114,6 +117,7 @@ func NewGit(config *Config) *Git {
 		skipBinaries:       config.SkipBinaries,
 		skipArchives:       config.SkipArchives,
 		parser:             parser,
+		includeHiddenRefs:  config.IncludeHiddenRefs,
 	}
 }
 
@@ -201,14 +205,15 @@ func (s *Source) Init(aCtx context.Context, name string, jobId sources.JobID, so
 	}
 
 	cfg := &Config{
-		SourceName:   s.name,
-		JobID:        s.jobID,
-		SourceID:     s.sourceID,
-		SourceType:   s.Type(),
-		Verify:       s.verify,
-		SkipBinaries: conn.GetSkipBinaries(),
-		SkipArchives: conn.GetSkipArchives(),
-		Concurrency:  concurrency,
+		SourceName:        s.name,
+		JobID:             s.jobID,
+		SourceID:          s.sourceID,
+		SourceType:        s.Type(),
+		Verify:            s.verify,
+		SkipBinaries:      conn.GetSkipBinaries(),
+		SkipArchives:      conn.GetSkipArchives(),
+		IncludeHiddenRefs: conn.GetIncludeHiddenRefs(),
+		Concurrency:       concurrency,
 		SourceMetadataFunc: func(repository, commit, ref, email, timestamp, file string, line int64) *source_metadatapb.MetaData {
 			return &source_metadatapb.MetaData{
 				Data: &source_metadatapb.MetaData_Git{
@@ -418,10 +423,15 @@ func executeClone(ctx context.Context, params cloneParams) (*git.Repository, err
 
 	gitArgs := []string{
 		"clone", cloneURL.String(), params.clonePath,
-		// Fetch additional refs from GitHub and GitLab.
+		// Git-related
+		"-c", "remote.origin.fetch=+refs/notes/*:refs/thog/hr/notes/*", // https://tylercipriani.com/blog/2022/11/19/git-notes-gits-coolest-most-unloved-feature/
+		"-c", "remote.origin.fetch=+refs/remotes/*:refs/thog/hr/remotes/*",
+		// Hidden refs creates for each pull request on GitHub and GitLab.
 		// https://github.com/trufflesecurity/trufflehog/issues/1588
 		"-c", "remote.origin.fetch=+refs/pull/*:refs/heads/thog/pr/*",
 		"-c", "remote.origin.fetch=+refs/merge-requests/*:refs/thog/mr/*",
+		// Third-party tools.
+		"-c", "remote.origin.fetch=+refs/reviewable/*:refs/thog/hr/reviewable/*", // https://www.reviewable.io/
 	}
 	gitArgs = append(gitArgs, params.args...)
 	cloneCmd := exec.Command("git", gitArgs...)
@@ -467,6 +477,43 @@ func executeClone(ctx context.Context, params cloneParams) (*git.Repository, err
 	logger.V(1).Info("successfully cloned repo")
 
 	return repo, nil
+}
+
+// FetchReference executes the `git fetch <remote> <refspec>` command in an existing repository context.
+func FetchReference(ctx context.Context, repoPath string, remote string, reference string) error {
+	cmd := exec.Command("git", "fetch", remote, reference, "--recurse-submodules", "no")
+	absPath, err := filepath.Abs(repoPath)
+	cmd.Env = append(cmd.Env, "GIT_DIR="+filepath.Join(absPath, ".git"))
+
+	logger := ctx.Logger().WithValues(
+		"path", repoPath,
+		"command", cmd.String(),
+	)
+
+	// Execute command and wait for the stdout / stderr.
+	outputBytes, err := cmd.CombinedOutput()
+	output := string(outputBytes)
+	if err != nil {
+		// This error seems to occur when attempting to fetch a reference from a submodule.
+		if strings.HasPrefix(err.Error(), "fatal: remote error: upload-pack: not our ref") {
+			return nil
+		}
+		logger.Error(err, "git fetch failed", "output", output)
+		err = fmt.Errorf("error executing git fetch: %w", err)
+	}
+	logger.V(1).Info("git fetch command finished", "output", output)
+
+	if cmd.ProcessState == nil {
+		return fmt.Errorf("fetch command exited with no output")
+	}
+	if cmd.ProcessState != nil && cmd.ProcessState.ExitCode() != 0 {
+		logger.Error(err, "git fetch failed", "output", output)
+		return fmt.Errorf("could not fetch ref from repo: %s, %w", repoPath, err)
+	}
+
+	logger.V(1).Info("successfully fetched reference", "ref", reference)
+
+	return nil
 }
 
 // PingRepoUsingToken executes git ls-remote on a repo and returns any error that occurs. It can be used to validate
@@ -911,6 +958,16 @@ func (s *Git) ScanRepo(ctx context.Context, repo *git.Repository, repoPath strin
 	}
 	start := time.Now().Unix()
 
+	if s.includeHiddenRefs {
+		ctx.Logger().Info("Checking for hidden refs...")
+		_, err := fetchHiddenRefs(ctx, repo)
+		if err != nil {
+			ctx.Logger().Error(err, "failed to fetch hidden refs")
+		}
+	} else {
+		ctx.Logger().Info("Not checking hidden refs", "value", s.includeHiddenRefs)
+	}
+
 	if err := s.ScanCommits(ctx, repo, repoPath, scanOptions, reporter); err != nil {
 		return err
 	}
@@ -1016,6 +1073,50 @@ func resolveHash(repo *git.Repository, ref string) (string, error) {
 		return "", err
 	}
 	return resolved.String(), nil
+}
+
+func fetchHiddenRefs(ctx context.Context, repo *git.Repository) ([]string, error) {
+	remotes, err := repo.Remotes()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get remotes: %w", err)
+	}
+
+	foundRefs := make([]string, 0)
+
+	// In most cases, there will be a single remote (origin).
+	// However, we're checking *all* remotes to be thorough.
+	for _, remote := range remotes {
+		refs, err := remote.List(&git.ListOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("unable to list remote references: %w", err)
+		}
+
+		ctx.Logger().Info("Found hidden refs", "remote", remote.Config().Name, "refs", len(refs))
+		for _, ref := range refs {
+			ref := ref.Name()
+			refStr := ref.String()
+
+			// Ignore known refs. (Branches, tags, and pulls should already be handled.)
+			if ref.IsBranch() || ref.IsTag() || refStr == "HEAD" || strings.HasPrefix(refStr, "refs/notes/") || strings.HasPrefix(refStr, "refs/pull/") || strings.HasPrefix(refStr, "refs/reviewable/") {
+				continue
+			}
+
+			foundRefs = append(foundRefs, refStr)
+
+			spec := fmt.Sprintf("+%s:refs/heads/thog/hr/%s/%s", refStr, remote.Config().Name, refStr[5:])
+			o := &git.FetchOptions{
+				RefSpecs: []config.RefSpec{
+					config.RefSpec(spec),
+				},
+			}
+			ctx.Logger().Info("Fetching hidden ref", "remote", remote.Config().Name, "ref", refStr)
+			if err := repo.Fetch(o); err != nil {
+				ctx.Logger().Error(err, "failed to fetch ref", "ref", refStr)
+				return nil, fmt.Errorf("failed to fetch ref: %w", err)
+			}
+		}
+	}
+	return foundRefs, nil
 }
 
 // stripPassword removes username:password contents from URLs. The first return value is the cleaned URL and the second

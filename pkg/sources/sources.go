@@ -202,6 +202,8 @@ type GitConfig struct {
 	ExcludeGlobs string
 	// SkipBinaries allows skipping binary files from the scan.
 	SkipBinaries bool
+	// IncludeHiddenRefs indicates whether to include 'hidden' remote refs (not `refs/heads/*` or `refs/tags/*`) in the scan.
+	IncludeHiddenRefs bool
 }
 
 // GithubConfig defines the optional configuration for a github source.
@@ -236,6 +238,8 @@ type GithubConfig struct {
 	SkipBinaries bool
 	// IncludeWikis indicates whether to include repository wikis in the scan.
 	IncludeWikis bool
+	// IncludeHiddenRefs indicates whether to include 'hidden' remote refs (not `refs/heads/*` or `refs/tags/*`) in the scan.
+	IncludeHiddenRefs bool
 }
 
 // GitlabConfig defines the optional configuration for a gitlab source.
@@ -250,6 +254,8 @@ type GitlabConfig struct {
 	Filter *common.Filter
 	// SkipBinaries allows skipping binary files from the scan.
 	SkipBinaries bool
+	// IncludeHiddenRefs indicates whether to include 'hidden' remote refs (not `refs/heads/*` or `refs/tags/*`) in the scan.
+	IncludeHiddenRefs bool
 }
 
 // FilesystemConfig defines the optional configuration for a filesystem source.

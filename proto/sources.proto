@@ -202,6 +202,7 @@ message Git {
   string uri = 13; // repository URL. https://, file://, or ssh://
   bool skip_binaries = 14;
   bool skip_archives = 15;
+  bool include_hidden_refs = 16;
 }
 
 message GitLab {
@@ -215,6 +216,7 @@ message GitLab {
   repeated string ignore_repos = 6;
   bool skip_binaries = 7;
   bool skip_archives = 8;
+  bool include_hidden_refs = 9;
 }
 
 message GitHub {
@@ -239,6 +241,7 @@ message GitHub {
   bool skip_binaries = 17;
   bool skip_archives = 18;
   bool include_wikis = 19;
+  bool include_hidden_refs = 20;
 }
 
 message GoogleDrive {

@@ -27,6 +27,7 @@ func (e *Engine) ScanGitHub(ctx context.Context, c sources.GithubConfig) error {
 		IncludeGistComments:        c.IncludeGistComments,
 		IncludeWikis:               c.IncludeWikis,
 		SkipBinaries:               c.SkipBinaries,
+		IncludeHiddenRefs:          c.IncludeHiddenRefs,
 	}
 	if len(c.Token) > 0 {
 		connection.Credential = &sourcespb.GitHub_Token{

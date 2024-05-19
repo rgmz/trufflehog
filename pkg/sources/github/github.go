@@ -240,14 +240,15 @@ func (s *Source) Init(aCtx context.Context, name string, jobID sources.JobID, so
 	}
 
 	cfg := &git.Config{
-		SourceName:   s.name,
-		JobID:        s.jobID,
-		SourceID:     s.sourceID,
-		SourceType:   s.Type(),
-		Verify:       s.verify,
-		SkipBinaries: conn.GetSkipBinaries(),
-		SkipArchives: conn.GetSkipArchives(),
-		Concurrency:  concurrency,
+		SourceName:        s.name,
+		JobID:             s.jobID,
+		SourceID:          s.sourceID,
+		SourceType:        s.Type(),
+		Verify:            s.verify,
+		SkipBinaries:      conn.GetSkipBinaries(),
+		SkipArchives:      conn.GetSkipArchives(),
+		IncludeHiddenRefs: conn.GetIncludeHiddenRefs(),
+		Concurrency:       concurrency,
 		SourceMetadataFunc: func(repository, commit, commitSource, email, timestamp, file string, line int64) *source_metadatapb.MetaData {
 			return &source_metadatapb.MetaData{
 				Data: &source_metadatapb.MetaData_Github{
