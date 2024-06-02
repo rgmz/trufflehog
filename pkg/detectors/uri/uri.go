@@ -32,9 +32,6 @@ var _ interface {
 var (
 	keyPat = regexp.MustCompile(`\b(?:https?:)?\/\/[\S]{3,50}:([\S]{3,50})@[-.%\w\/:]+\b`)
 
-	// TODO: make local addr opt-out
-	defaultClient = detectors.DetectorHttpClientWithNoLocalAddresses
-
 	hostNotFoundCache = simple.NewCache[struct{}]()
 )
 
@@ -111,8 +108,9 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 				continue
 			}
 
+			// TODO: make local addr opt-out
 			if s.client == nil {
-				s.client = defaultClient
+				s.client = detectors.GetHttpClientWithNoLocalAddresses()
 			}
 			isVerified, vErr := verifyURL(ctx, s.client, parsedURL)
 			r.Verified = isVerified
