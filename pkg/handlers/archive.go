@@ -22,9 +22,9 @@ const (
 var (
 	// NOTE: This is a temporary workaround for |openArchive| incrementing depth twice per archive.
 	// See: https://github.com/trufflesecurity/trufflehog/issues/2942
-	maxDepth   = 5 * 2
-	maxSize    = 2 << 30 // 2 GB
-	maxTimeout = time.Duration(30) * time.Second
+	maxDepth   = 5 * 5
+	maxSize    = 3 << 30 // 2 GB
+	maxTimeout = time.Duration(3) * time.Minute
 )
 
 // SetArchiveMaxSize sets the maximum size of the archive.
