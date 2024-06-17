@@ -21,13 +21,13 @@ var _ detectors.Detector = (*Scanner)(nil)
 var (
 	client = common.SaneHttpClient()
 
-	keyPat = regexp.MustCompile(detectors.PrefixRegex([]string{"ocean", "do"}) + `\b([A-Za-z0-9_-]{64})\b`)
+	keyPat = regexp.MustCompile(detectors.PrefixRegex([]string{"digitalocean", "ocean", "do"}) + `\b([A-Za-z0-9_-]{64})\b`)
 )
 
 // Keywords are used for efficiently pre-filtering chunks.
 // Use identifiers in the secret preferably, or the provider name.
 func (s Scanner) Keywords() []string {
-	return []string{"digitalocean"}
+	return []string{"digitalocean", "ocean", "do"}
 }
 
 // FromData will find and optionally verify DigitalOceanToken secrets in a given set of bytes.
