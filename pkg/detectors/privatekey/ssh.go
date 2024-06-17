@@ -51,7 +51,7 @@ func firstResponseFromSSH(ctx context.Context, parsedKey any, username, hostport
 					return fmt.Errorf("unknown host fingerprint for gitlab.com, got %s", fingerprint)
 				}
 			default:
-				return errors.New("unknown host in fingerprint db")
+				return nil
 			}
 			return nil
 		},
@@ -121,8 +121,8 @@ func verifyGitHubUser(ctx context.Context, parsedKey any) (*string, error) {
 	return nil, nil
 }
 
-func verifyGitLabUser(ctx context.Context, parsedKey any) (*string, error) {
-	output, err := firstResponseFromSSH(ctx, parsedKey, "git", "gitlab.com:22")
+func verifyGitLabUser(ctx context.Context, host string, parsedKey any) (*string, error) {
+	output, err := firstResponseFromSSH(ctx, parsedKey, "git", host+":22")
 	if err != nil {
 		return nil, err
 	}

@@ -98,6 +98,7 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 				data, err := lookupFingerprint(ctx, fingerprint, s.IncludeExpired)
 				if err == nil {
 					if data != nil {
+						s1.Verified = true
 						extraData.Add("certificate_urls", strings.Join(data.CertificateURLs, ", "))
 					}
 				} else {
@@ -114,6 +115,25 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 					verificationErrors.Add(err)
 				}
 				if user != nil {
+					badUsers := map[string]struct{}{
+						"007BlackGirl":              {},
+						"esztieger":                 {},
+						"Tymbur":                    {},
+						"xoDeinemudda":              {},
+						"vorcha100":                 {},
+						"dgaspara":                  {},
+						"vanmans":                   {},
+						"sCrewLoU":                  {},
+						"rr-krystina-bixby":         {},
+						"FesenkoTatyana":            {},
+						"sx77435321":                {},
+						"kubernetes-sigs/kustomize": {},
+						"knative/build":             {},
+					}
+					if _, ok := badUsers[*user]; ok {
+						return
+					}
+					s1.Verified = true
 					extraData.Add("github_user", *user)
 				}
 			}()
@@ -122,27 +142,55 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				user, err := verifyGitLabUser(ctx, parsedKey)
+				user, err := verifyGitLabUser(ctx, "gitlab.com", parsedKey)
 				if err != nil && !errors.Is(err, errPermissionDenied) {
 					verificationErrors.Add(err)
 				}
 				if user != nil {
+					s1.Verified = true
 					extraData.Add("gitlab_user", *user)
 				}
 			}()
 
-			wg.Wait()
-			if len(extraData.data) > 0 {
-				s1.Verified = true
-				for k, v := range extraData.data {
-					s1.ExtraData[k] = v
+			// Test SSH key against gitlab.gnome.org
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				user, err := verifyGitLabUser(ctx, "gitlab.gnome.org", parsedKey)
+				if err != nil && !errors.Is(err, errPermissionDenied) {
+					verificationErrors.Add(err)
 				}
-			} else {
-				s1.ExtraData = nil
+				if user != nil {
+					s1.Verified = true
+					extraData.Add("gnome_gitlab_user", *user)
+				}
+			}()
+
+			// Test SSH key against gitlab.freedesktop.org
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				user, err := verifyGitLabUser(ctx, "gitlab.freedesktop.org", parsedKey)
+				if err != nil && !errors.Is(err, errPermissionDenied) {
+					verificationErrors.Add(err)
+				}
+				if user != nil {
+					s1.Verified = true
+					extraData.Add("freedesktop_gitlab_user", *user)
+				}
+			}()
+
+			wg.Wait()
+			if s1.Verified {
+				s1.ExtraData = extraData.data
 			}
 			if len(verificationErrors.errors) > 0 {
 				s1.SetVerificationError(fmt.Errorf("verification failures: %s", strings.Join(verificationErrors.errors, ", ")), token)
 			}
+		}
+
+		if len(s1.ExtraData) == 0 {
+			s1.ExtraData = nil
 		}
 
 		results = append(results, s1)
