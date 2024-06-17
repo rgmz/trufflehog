@@ -27,7 +27,7 @@ func (Scanner) CloudEndpoint() string { return "https://api.github.com" }
 var (
 	// Oauth token
 	// https://developer.github.com/v3/#oauth2-token-sent-in-a-header
-	keyPat = regexp.MustCompile(`(?i)(?:github|gh|pat|token)[^\.].{0,40}[ =:'"]+([a-f0-9]{40})\b`)
+	keyPat = regexp.MustCompile(`(?i)(?:github|gh|hub|pat|token|octo)[^\.].{0,40}[ =:'"]+([a-f0-9]{40})\b`)
 
 	// TODO: Oauth2 client_id and client_secret
 	// https://developer.github.com/v3/#oauth2-keysecret
@@ -55,7 +55,7 @@ type HeaderInfo struct {
 // Keywords are used for efficiently pre-filtering chunks.
 // Use identifiers in the secret preferably, or the provider name.
 func (s Scanner) Keywords() []string {
-	return []string{"github", "gh", "pat", "token"}
+	return []string{"github", "gh", "hub", "pat", "token", "octo"}
 }
 
 var ghFalsePositives = map[detectors.FalsePositive]struct{}{
