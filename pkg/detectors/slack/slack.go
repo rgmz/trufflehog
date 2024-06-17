@@ -25,10 +25,16 @@ var _ detectors.Detector = Scanner{}
 var (
 	defaultClient = common.SaneHttpClient()
 	tokenPats     = map[string]*regexp.Regexp{
-		"Slack Bot Token":               regexp.MustCompile(`xoxb\-[0-9]{10,13}\-[0-9]{10,13}[a-zA-Z0-9\-]*`),
-		"Slack User Token":              regexp.MustCompile(`xoxp\-[0-9]{10,13}\-[0-9]{10,13}[a-zA-Z0-9\-]*`),
-		"Slack Workspace Access Token":  regexp.MustCompile(`xoxa\-[0-9]{10,13}\-[0-9]{10,13}[a-zA-Z0-9\-]*`),
-		"Slack Workspace Refresh Token": regexp.MustCompile(`xoxr\-[0-9]{10,13}\-[0-9]{10,13}[a-zA-Z0-9\-]*`),
+		"Slack Bot Token":                   regexp.MustCompile(`xoxb-[0-9]{10,13}-[0-9]{10,13}[a-zA-Z0-9\-]*`),
+		"Slack User Token":                  regexp.MustCompile(`xox[pe](?:-[0-9]{10,13}){3}-[a-zA-Z0-9-]{28,34}`),
+		"Slack Workspace Access Token":      regexp.MustCompile(`xoxa-[0-9]{10,13}-[0-9]{10,13}[a-zA-Z0-9\-]*`),
+		"Slack Workspace Refresh Token":     regexp.MustCompile(`xoxr-[0-9]{10,13}-[0-9]{10,13}[a-zA-Z0-9\-]*`),
+		"Slack App Level Token":             regexp.MustCompile(`(?i)xapp-\d-[A-Z0-9]+-\d+-[a-z0-9]+`),
+		"Slack Configuration Token":         regexp.MustCompile(`(?i)(xoxe.xox[bp]-\d-[A-Z0-9]{163,166})`),
+		"Slack Configuration Refresh Token": regexp.MustCompile(`(?i)(xoxe-\d-[A-Z0-9]{146})`),
+		"Slack Legacy Bot Token":            regexp.MustCompile(`(xoxb-[0-9]{8,14}-[a-zA-Z0-9]{18,26})`),
+		"Slack Legacy Workspace Token":      regexp.MustCompile(`(xox[ar]-(?:\d-)?[0-9a-zA-Z]{8,48})`),
+		"Slack Legacy Token":                regexp.MustCompile(`(xox[os]-\d+-\d+-\d+-[a-fA-F\d]+)`),
 	}
 	verifyURL = "https://slack.com/api/auth.test"
 )
@@ -47,7 +53,7 @@ type authRes struct {
 // Keywords are used for efficiently pre-filtering chunks.
 // Use identifiers in the secret preferably, or the provider name.
 func (s Scanner) Keywords() []string {
-	return []string{"xoxb-", "xoxp-", "xoxa-", "xoxr-"}
+	return []string{"xoxb-", "xoxp-", "xoxe-", "xoxa-", "xoxr-", "xapp-", "xoxe.", "xoxo-", "xoxs-"}
 }
 
 // FromData will find and optionally verify Slack secrets in a given set of bytes.
