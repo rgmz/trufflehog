@@ -1192,9 +1192,8 @@ func (e *Engine) notifierWorker(ctx context.Context) {
 		// Duplicate results with the same decoder type SHOULD have their own entry in the
 		// results list, this would happen if the same secret is found multiple times.
 		// Note: If the source type is postman, we dedupe the results regardless of decoder type.
-		key := fmt.Sprintf("%s%s%s%+v", result.DetectorType.String(), result.Raw, result.RawV2, result.SourceMetadata)
-		if val, ok := e.dedupeCache.Get(key); ok && (val != result.DecoderType ||
-			result.SourceType == sourcespb.SourceType_SOURCE_TYPE_POSTMAN) {
+		key := fmt.Sprintf("%s%s%s%t", result.DetectorName, result.Raw, result.RawV2, result.Verified)
+		if _, ok := e.dedupeCache.Get(key); ok {
 			continue
 		}
 		e.dedupeCache.Add(key, result.DecoderType)
