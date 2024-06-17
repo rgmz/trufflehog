@@ -530,8 +530,7 @@ func (c *Parser) FromReader(ctx context.Context, stdOut io.Reader, diffChan chan
 			if latestState != HunkContentLine {
 				latestState = HunkContentLine
 			}
-			// TODO: Why do we care about this? It creates empty lines in the diff. If there are no plusLines, it's just newlines.
-			if err := currentDiff.write([]byte("\n")); err != nil {
+			if err := currentDiff.write(line[1:]); err != nil {
 				ctx.Logger().Error(err, "failed to write to diff")
 			}
 		case isHunkPlusLine(latestState, line):
