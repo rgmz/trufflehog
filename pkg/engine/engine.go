@@ -980,7 +980,8 @@ func (e *Engine) detectChunk(ctx context.Context, data detectableChunk) {
 	if e.printAvgDetectorTime {
 		start = time.Now()
 	}
-	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+	chunkCtx := context.WithValue(ctx, "metadata", data.chunk.SourceMetadata.GetGithub())
+	ctx, cancel := context.WithTimeout(chunkCtx, time.Minute*1)
 	defer common.Recover(ctx)
 	defer cancel()
 
