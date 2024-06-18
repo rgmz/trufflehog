@@ -29,7 +29,7 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/sources"
 )
 
-const detectionTimeout = 10 * time.Second
+const detectionTimeout = 1 * time.Minute
 
 var errOverlap = errors.New(
 	"More than one detector has found this result. For your safety, verification has been disabled." +
@@ -1033,7 +1033,7 @@ func (e *Engine) detectChunk(ctx context.Context, data detectableChunk) {
 	}
 	defer common.Recover(ctx)
 
-	ctx = context.WithValue(ctx, "detector", data.detector.Key.Loggable())
+	ctx = context.WithValues(ctx, "detector", data.detector.Key.Loggable(), "metadata", data.chunk.SourceMetadata.GetGithub())
 
 	isFalsePositive := detectors.GetFalsePositiveCheck(data.detector.Detector)
 
