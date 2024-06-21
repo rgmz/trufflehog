@@ -663,21 +663,29 @@ func (e *Engine) scannerWorker(ctx context.Context) {
 	for chunk := range e.ChunksChan() {
 		startTime := time.Now()
 		for _, decoder := range e.decoders {
-			decoded := decoder.FromChunk(chunk)
-			if decoded == nil {
-				ctx.Logger().V(4).Info("decoder not applicable for chunk", "decoder", decoder.Type().String(), "chunk", chunk)
-				continue
-			}
+			var decoded *decoders.DecodableChunk
+			for {
+				decoded = decoder.FromChunk(chunk)
+				if decoded == nil {
+					ctx.Logger().V(4).Info("decoder not applicable for chunk", "decoder", decoder.Type().String(), "chunk", chunk)
+					break
+				}
 
-			matchingDetectors := e.ahoCorasickCore.FindDetectorMatches(decoded.Chunk.Data)
-			for _, detector := range matchingDetectors {
-				decoded.Chunk.Verify = chunk.Verify
-				wgDetect.Add(1)
-				e.detectableChunksChan <- detectableChunk{
-					chunk:    *decoded.Chunk,
-					detector: detector,
-					decoder:  decoded.DecoderType,
-					wgDoneFn: wgDetect.Done,
+				matchingDetectors := e.ahoCorasickCore.FindDetectorMatches(decoded.Chunk.Data)
+				for _, detector := range matchingDetectors {
+					decoded.Chunk.Verify = chunk.Verify
+					wgDetect.Add(1)
+					e.detectableChunksChan <- detectableChunk{
+						chunk:    *decoded.Chunk,
+						detector: detector,
+						decoder:  decoded.DecoderType,
+						wgDoneFn: wgDetect.Done,
+					}
+				}
+
+				// UTF8 decoder always returns non-nil data.
+				if decoder.Type() == detectorspb.DecoderType_PLAIN {
+					break
 				}
 			}
 		}
