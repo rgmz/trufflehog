@@ -688,25 +688,32 @@ func (e *Engine) scannerWorker(ctx context.Context) {
 	for chunk := range e.ChunksChan() {
 		startTime := time.Now()
 		for _, decoder := range e.decoders {
-			decodeStart := time.Now()
-			decoded := decoder.FromChunk(chunk)
-			decodeTime := time.Since(decodeStart).Microseconds()
-			decodeLatency.WithLabelValues(decoder.Type().String(), chunk.SourceName).Observe(float64(decodeTime))
+			var decoded *decoders.DecodableChunk
+			for {
+				decodeStart := time.Now()
+				decoded = decoder.FromChunk(chunk)
+				decodeTime := time.Since(decodeStart).Microseconds()
+				decodeLatency.WithLabelValues(decoder.Type().String(), chunk.SourceName).Observe(float64(decodeTime))
+				if decoded == nil {
+					ctx.Logger().V(5).Info("decoder not applicable for chunk", "decoder", decoder.Type().String(), "chunk", chunk)
+					break
+				}
 
-			if decoded == nil {
-				ctx.Logger().V(5).Info("decoder not applicable for chunk", "decoder", decoder.Type().String(), "chunk", chunk)
-				continue
-			}
+				matchingDetectors := e.ahoCorasickCore.FindDetectorMatches(decoded.Chunk.Data)
+				for _, detector := range matchingDetectors {
+					decoded.Chunk.Verify = chunk.Verify
+					wgDetect.Add(1)
+					e.detectableChunksChan <- detectableChunk{
+						chunk:    *decoded.Chunk,
+						detector: detector,
+						decoder:  decoded.DecoderType,
+						wgDoneFn: wgDetect.Done,
+					}
+				}
 
-			matchingDetectors := e.ahoCorasickCore.FindDetectorMatches(decoded.Chunk.Data)
-			for _, detector := range matchingDetectors {
-				decoded.Chunk.Verify = chunk.Verify
-				wgDetect.Add(1)
-				e.detectableChunksChan <- detectableChunk{
-					chunk:    *decoded.Chunk,
-					detector: detector,
-					decoder:  decoded.DecoderType,
-					wgDoneFn: wgDetect.Done,
+				// UTF8 decoder always returns non-nil data.
+				if decoder.Type() == detectorspb.DecoderType_PLAIN {
+					break
 				}
 			}
 		}

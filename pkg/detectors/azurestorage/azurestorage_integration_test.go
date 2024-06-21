@@ -10,8 +10,6 @@ import (
 	"testing"
 	"time"
 
-	regexp "github.com/wasilibs/go-re2"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 

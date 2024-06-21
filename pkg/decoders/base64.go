@@ -32,7 +32,15 @@ func (d *Base64) Type() detectorspb.DecoderType {
 }
 
 func (d *Base64) FromChunk(chunk *sources.Chunk) *DecodableChunk {
-	decodableChunk := &DecodableChunk{Chunk: chunk, DecoderType: d.Type()}
+	dc := decodeChunk(chunk)
+	if dc == nil {
+		return dc
+	}
+	return nil
+}
+
+func decodeChunk(chunk *sources.Chunk) *DecodableChunk {
+	decodableChunk := &DecodableChunk{Chunk: chunk, DecoderType: detectorspb.DecoderType_BASE64}
 	encodedSubstrings := getSubstringsOfCharacterSet(chunk.Data, 20, b64CharsetMapping, b64EndChars)
 	decodedSubstrings := make(map[string][]byte)
 
@@ -67,7 +75,6 @@ func (d *Base64) FromChunk(chunk *sources.Chunk) *DecodableChunk {
 		chunk.Data = result.Bytes()
 		return decodableChunk
 	}
-
 	return nil
 }
 
