@@ -4,11 +4,11 @@ import (
 	"context"
 	"net"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
-	regexp "github.com/wasilibs/go-re2"
 
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/pb/detectorspb"

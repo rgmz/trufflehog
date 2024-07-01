@@ -3,6 +3,7 @@ package amplitudeapikey
 import (
 	"context"
 	"net/http"
+	"regexp"
 	"strings"
 
 	regexp "github.com/wasilibs/go-re2"

@@ -3,6 +3,7 @@ package circleci
 import (
 	"context"
 	"net/http"
+	"regexp"
 
 	regexp "github.com/wasilibs/go-re2"
 

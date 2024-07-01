@@ -3,6 +3,7 @@ package cloudimage
 import (
 	"context"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 

@@ -9,8 +9,9 @@ import (
 	"sync"
 	"time"
 
+	"regexp"
+
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/errors"
-	regexp "github.com/wasilibs/go-re2"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/trufflesecurity/trufflehog/v3/pkg/common"

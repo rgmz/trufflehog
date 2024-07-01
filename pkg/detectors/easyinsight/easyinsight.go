@@ -3,13 +3,12 @@ package easyinsight
 import (
 	"context"
 	"fmt"
-	regexp "github.com/wasilibs/go-re2"
-	"io"
-	"net/http"
-
 	"github.com/trufflesecurity/trufflehog/v3/pkg/common"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/pb/detectorspb"
+	"io"
+	"net/http"
+	"regexp"
 )
 
 type Scanner struct {
