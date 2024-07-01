@@ -3,10 +3,10 @@ package azure
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/Azure/go-autorest/autorest/azure/auth"
-	regexp "github.com/wasilibs/go-re2"
 
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/pb/detectorspb"

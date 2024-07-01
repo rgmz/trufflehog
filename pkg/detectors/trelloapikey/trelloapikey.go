@@ -2,8 +2,9 @@ package trelloapikey
 
 import (
 	"context"
-	regexp "github.com/wasilibs/go-re2"
+	// "log"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/trufflesecurity/trufflehog/v3/pkg/common"
@@ -11,7 +12,7 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/pb/detectorspb"
 )
 
-type Scanner struct{
+type Scanner struct {
 	detectors.DefaultMultiPartCredentialProvider
 }
 
