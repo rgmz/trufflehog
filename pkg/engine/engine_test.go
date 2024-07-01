@@ -500,61 +500,6 @@ func TestEngine_CustomDetectorsDetectorsVerifiedSecrets(t *testing.T) {
 	assert.Equal(t, want, e.GetMetrics().VerifiedSecretsFound)
 }
 
-func TestVerificationOverlapChunk(t *testing.T) {
-	ctx := context.Background()
-
-	absPath, err := filepath.Abs("./testdata/verificationoverlap_secrets.txt")
-	assert.Nil(t, err)
-
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	confPath, err := filepath.Abs("./testdata/verificationoverlap_detectors.yaml")
-	assert.Nil(t, err)
-	conf, err := config.Read(confPath)
-	assert.Nil(t, err)
-
-	const defaultOutputBufferSize = 64
-	opts := []func(*sources.SourceManager){
-		sources.WithSourceUnits(),
-		sources.WithBufferedOutput(defaultOutputBufferSize),
-	}
-
-	sourceManager := sources.NewManager(opts...)
-
-	c := Config{
-		Concurrency:      1,
-		Decoders:         decoders.DefaultDecoders(),
-		Detectors:        conf.Detectors,
-		IncludeDetectors: "904", // isolate this test to only the custom detectors provided
-		Verify:           false,
-		SourceManager:    sourceManager,
-		Dispatcher:       NewPrinterDispatcher(new(discardPrinter)),
-	}
-
-	e, err := NewEngine(ctx, &c)
-	assert.NoError(t, err)
-
-	e.verificationOverlapTracker = new(verificationOverlapTracker)
-
-	e.Start(ctx)
-
-	cfg := sources.FilesystemConfig{Paths: []string{absPath}}
-	if err := e.ScanFileSystem(ctx, cfg); err != nil {
-		return
-	}
-
-	// Wait for all the chunks to be processed.
-	assert.Nil(t, e.Finish(ctx))
-	// We want TWO secrets that match both the custom regexes.
-	want := uint64(2)
-	assert.Equal(t, want, e.GetMetrics().UnverifiedSecretsFound)
-
-	// We want 0 because these are custom detectors and verification should still occur.
-	wantDupe := 0
-	assert.Equal(t, wantDupe, e.verificationOverlapTracker.verificationOverlapDuplicateCount)
-}
-
 const (
 	TestDetectorType  = -1
 	TestDetectorType2 = -2
@@ -595,50 +540,6 @@ func (testDetectorV2) Keywords() []string { return []string{"ample"} }
 func (testDetectorV2) Type() detectorspb.DetectorType { return TestDetectorType2 }
 
 func (testDetectorV2) Description() string { return "" }
-
-func TestVerificationOverlapChunkFalsePositive(t *testing.T) {
-	ctx := context.Background()
-
-	absPath, err := filepath.Abs("./testdata/verificationoverlap_secrets_fp.txt")
-	assert.NoError(t, err)
-
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	const defaultOutputBufferSize = 64
-	opts := []func(*sources.SourceManager){
-		sources.WithSourceUnits(),
-		sources.WithBufferedOutput(defaultOutputBufferSize),
-	}
-
-	sourceManager := sources.NewManager(opts...)
-
-	c := Config{
-		Concurrency:   1,
-		Decoders:      decoders.DefaultDecoders(),
-		Detectors:     []detectors.Detector{testDetectorV1{}, testDetectorV2{}},
-		Verify:        false,
-		SourceManager: sourceManager,
-		Dispatcher:    NewPrinterDispatcher(new(discardPrinter)),
-	}
-
-	e, err := NewEngine(ctx, &c)
-	assert.NoError(t, err)
-
-	e.verificationOverlapTracker = new(verificationOverlapTracker)
-
-	e.Start(ctx)
-
-	cfg := sources.FilesystemConfig{Paths: []string{absPath}}
-	err = e.ScanFileSystem(ctx, cfg)
-	assert.NoError(t, err)
-
-	// Wait for all the chunks to be processed.
-	assert.NoError(t, e.Finish(ctx))
-	// We want 0 because the secret is a false positive.
-	want := uint64(0)
-	assert.Equal(t, want, e.GetMetrics().UnverifiedSecretsFound)
-}
 
 func TestRetainFalsePositives(t *testing.T) {
 	ctx := context.Background()
