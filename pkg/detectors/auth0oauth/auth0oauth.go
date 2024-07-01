@@ -2,10 +2,10 @@ package auth0oauth
 
 import (
 	"context"
-	regexp "github.com/wasilibs/go-re2"
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/trufflesecurity/trufflehog/v3/pkg/common"
@@ -13,7 +13,7 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/pb/detectorspb"
 )
 
-type Scanner struct{
+type Scanner struct {
 	detectors.DefaultMultiPartCredentialProvider
 }
 
@@ -102,7 +102,7 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 
 						if !strings.Contains(body, "access_denied") {
 							s1.Verified = true
-						} 
+						}
 					}
 				}
 

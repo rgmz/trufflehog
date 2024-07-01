@@ -3,18 +3,19 @@ package bitfinex
 import (
 	"context"
 	"flag"
-	regexp "github.com/wasilibs/go-re2"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/bitfinexcom/bitfinex-api-go/v2/rest"
+
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors"
 
 	"github.com/trufflesecurity/trufflehog/v3/pkg/common"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/pb/detectorspb"
 )
 
-type Scanner struct{
+type Scanner struct {
 	detectors.DefaultMultiPartCredentialProvider
 }
 
