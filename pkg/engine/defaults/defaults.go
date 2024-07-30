@@ -235,6 +235,7 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/edamam"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/edenai"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/eightxeight"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/elasticcloud"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/elasticemail"
 	elevenlabsv1 "github.com/trufflesecurity/trufflehog/v3/pkg/detectors/elevenlabs/v1"
 	elevenlabsv2 "github.com/trufflesecurity/trufflehog/v3/pkg/detectors/elevenlabs/v2"
@@ -1067,6 +1068,7 @@ func buildDetectorList() []detectors.Detector {
 		&edamam.Scanner{},
 		&edenai.Scanner{},
 		&eightxeight.Scanner{},
+		&elasticcloud.Scanner{},
 		&elasticemail.Scanner{},
 		&elevenlabsv1.Scanner{},
 		&elevenlabsv2.Scanner{},
