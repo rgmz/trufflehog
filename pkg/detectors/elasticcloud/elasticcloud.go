@@ -25,11 +25,11 @@ func (s Scanner) Type() detectorspb.DetectorType {
 }
 
 func (s Scanner) Description() string {
-	return "Elastic Cloud"
+	return "Elastic Cloud is a Elasticsearch cloud service. With a valid Elastic Cloud API key, you can access the API from its base URL at api.elastic-cloud.com"
 }
 
 func (s Scanner) Keywords() []string {
-	return []string{"elasticcloud", "elastic-cloud", "apikey", "essu"}
+	return []string{"elasticcloud", "elastic-cloud", "essu"}
 }
 
 var (
