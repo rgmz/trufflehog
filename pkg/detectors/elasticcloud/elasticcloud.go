@@ -35,7 +35,7 @@ func (s Scanner) Keywords() []string {
 var (
 	defaultClient = common.SaneHttpClient()
 
-	keyPat = regexp.MustCompile(`\b(essu_(?:[A-Za-z0-9+\/]{4})*(?:[A-Za-z0-9+\/]{4}|[A-Za-z0-9+\/]{3}=|[A-Za-z0-9+\/]{2}={2}))`)
+	keyPat = regexp.MustCompile(`\b(essu_[a-zA-Z0-9+/]{32,}={0,3})`)
 )
 
 // FromData will find and optionally verify Apifonica secrets in a given set of bytes.
@@ -44,7 +44,11 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 
 	uniqueMatches := make(map[string]struct{})
 	for _, match := range keyPat.FindAllStringSubmatch(dataStr, -1) {
-		uniqueMatches[match[1]] = struct{}{}
+		m := match[1]
+		if detectors.StringShannonEntropy(m) < 4 {
+			continue
+		}
+		uniqueMatches[m] = struct{}{}
 	}
 
 	for match := range uniqueMatches {
@@ -95,6 +99,8 @@ func verifyAPIKey(ctx context.Context, c *http.Client, key string) (bool, error)
 	// 403 - key is valid but does not have access to the deployments endpoint
 	switch res.StatusCode {
 	case http.StatusOK, http.StatusForbidden:
+		body, _ := io.ReadAll(res.Body)
+		fmt.Printf("Body is: %q\n", string(body))
 		return true, nil
 	case http.StatusUnauthorized:
 		// The secret is determinately not verified (nothing to do)
