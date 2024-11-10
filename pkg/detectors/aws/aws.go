@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -14,6 +15,7 @@ import (
 	regexp "github.com/wasilibs/go-re2"
 
 	"github.com/trufflesecurity/trufflehog/v3/pkg/common"
+	logContext "github.com/trufflesecurity/trufflehog/v3/pkg/context"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/pb/detectorspb"
 
@@ -112,7 +114,7 @@ var (
 
 	// Make sure that your group is surrounded in boundary characters such as below to reduce false positives.
 	// Key types are from this list https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html#identifiers-unique-ids
-	idPat     = regexp.MustCompile(`\b((AKIA|ABIA|ACCA)[0-9A-Z]{16})\b`)
+	idPat     = regexp.MustCompile(`\b((AKIA|ABIA|ACCA)[A-Z0-9]{16})\b`)
 	secretPat = regexp.MustCompile(`[^A-Za-z0-9+\/]{0,1}([A-Za-z0-9+\/]{40})[^A-Za-z0-9+\/]{0,1}`)
 	// Hashes, like those for git, do technically match the secret pattern.
 	// But they are extremely unlikely to be generated as an actual AWS secret.
@@ -145,96 +147,104 @@ func GetHMAC(key []byte, data []byte) []byte {
 
 // FromData will find and optionally verify AWS secrets in a given set of bytes.
 func (s scanner) FromData(ctx context.Context, verify bool, data []byte) (results []detectors.Result, err error) {
+	logger := logContext.AddLogger(ctx).Logger().WithName("aws")
 	dataStr := string(data)
 
-	idMatches := idPat.FindAllStringSubmatch(dataStr, -1)
-	secretMatches := secretPat.FindAllStringSubmatch(dataStr, -1)
+	// Filter & deduplicate matches.
+	idMatches := make(map[string]struct{})
+	for _, matches := range idPat.FindAllStringSubmatch(dataStr, -1) {
+		idMatches[matches[1]] = struct{}{}
+	}
+	secretMatches := make(map[string]struct{})
+	for _, matches := range secretPat.FindAllStringSubmatch(dataStr, -1) {
+		secretMatches[matches[1]] = struct{}{}
+	}
 
-	for _, idMatch := range idMatches {
-		if len(idMatch) != 3 {
+	// Process Matches.
+	for idMatch := range idMatches {
+		if detectors.StringShannonEntropy(idMatch) < 3 {
 			continue
 		}
-		resIDMatch := strings.TrimSpace(idMatch[1])
-
 		if s.skipIDs != nil {
-			if _, ok := s.skipIDs[resIDMatch]; ok {
+			if _, ok := s.skipIDs[idMatch]; ok {
 				continue
 			}
 		}
 
-		for _, secretMatch := range secretMatches {
-			if len(secretMatch) != 2 {
+		for secretMatch := range secretMatches {
+			if detectors.StringShannonEntropy(secretMatch) < 4.5 {
 				continue
 			}
-			resSecretMatch := strings.TrimSpace(secretMatch[1])
 
 			s1 := detectors.Result{
 				DetectorType: detectorspb.DetectorType_AWS,
-				Raw:          []byte(resIDMatch),
-				Redacted:     resIDMatch,
-				RawV2:        []byte(resIDMatch + resSecretMatch),
+				Raw:          []byte(idMatch),
+				Redacted:     idMatch,
+				RawV2:        []byte(idMatch + ":" + secretMatch),
 				ExtraData: map[string]string{
-					"resource_type": resourceTypes[idMatch[2]],
+					"resource_type": resourceTypes[idMatch[:4]],
 				},
 			}
 
-			account, err := common.GetAccountNumFromAWSID(resIDMatch)
-			if err == nil {
+			// Decode the account ID.
+			account, err := common.GetAccountNumFromAWSID(idMatch)
+			isCanary := false
+			if err != nil {
+				logger.V(3).Info("Failed to decode account number", "err", err)
+			} else {
 				s1.ExtraData["account"] = account
-			}
-			if _, ok := thinkstCanaryList[account]; ok {
-				s1.ExtraData["is_canary"] = "true"
-				s1.ExtraData["message"] = thinkstMessage
-				if verify {
-					verified, arn, err := s.verifyCanary(resIDMatch, resSecretMatch)
-					if verified {
-						s1.Verified = true
-					}
-					if arn != "" {
-						s1.ExtraData["arn"] = arn
-					}
-					if err != nil {
-						s1.SetVerificationError(err, resSecretMatch)
+
+				// Handle canary IDs.
+				if _, ok := thinkstCanaryList[account]; ok {
+					isCanary = true
+					s1.ExtraData["message"] = thinkstMessage
+					if verify {
+						verified, arn, err := s.verifyCanary(idMatch, secretMatch)
+						s1.Verified = verified
+						if arn != "" {
+							s1.ExtraData["arn"] = arn
+						}
+						s1.SetVerificationError(err, secretMatch)
 					}
 				}
-			}
-			if _, ok := thinkstKnockoffsCanaryList[account]; ok {
-				s1.ExtraData["is_canary"] = "true"
-				s1.ExtraData["message"] = thinkstKnockoffsMessage
-				if verify {
-					verified, arn, err := s.verifyCanary(resIDMatch, resSecretMatch)
-					if verified {
-						s1.Verified = true
+				if _, ok := thinkstKnockoffsCanaryList[account]; ok {
+					isCanary = true
+					s1.ExtraData["message"] = thinkstKnockoffsMessage
+					if verify {
+						verified, arn, err := s.verifyCanary(idMatch, secretMatch)
+						s1.Verified = verified
+						if arn != "" {
+							s1.ExtraData["arn"] = arn
+						}
+						s1.SetVerificationError(err, secretMatch)
 					}
-					if arn != "" {
-						s1.ExtraData["arn"] = arn
-					}
-					if err != nil {
-						s1.SetVerificationError(err, resSecretMatch)
-					}
+				}
+
+				if isCanary {
+					s1.ExtraData["is_canary"] = "true"
 				}
 			}
 
-			if verify && (s1.ExtraData["is_canary"] != "true") {
-				isVerified, extraData, verificationErr := s.verifyMatch(ctx, resIDMatch, resSecretMatch, true)
+			if verify && !isCanary {
+				isVerified, extraData, verificationErr := s.verifyMatch(ctx, idMatch, secretMatch, true)
 				s1.Verified = isVerified
-				// It'd be good to log when calculated account value does not match
-				// the account value from verification. Should only be edge cases at most.
-				// if extraData["account"] != s1.ExtraData["account"] && extraData["account"] != "" {//log here}
+
+				// Log if the calculated ID does not match the ID value from verification.
+				// Should only be edge cases at most.
+				if account != "" && extraData["account"] != "" && extraData["account"] != s1.ExtraData["account"] {
+					logger.V(2).Info("Calculated account ID does not match actual account ID", "calculated", account, "actual", extraData["account"])
+				}
 
 				// Append the extraData to the existing ExtraData map.
-				// This will overwrite with the new verified values.
 				for k, v := range extraData {
 					s1.ExtraData[k] = v
 				}
-				if verificationErr != nil {
-					s1.SetVerificationError(verificationErr, resSecretMatch)
-				}
+				s1.SetVerificationError(verificationErr, secretMatch)
 			}
 
 			if !s1.Verified {
 				// Unverified results that look like hashes are probably not secrets
-				if falsePositiveSecretCheck.MatchString(resSecretMatch) {
+				if falsePositiveSecretCheck.MatchString(secretMatch) {
 					continue
 				}
 			}
@@ -242,6 +252,7 @@ func (s scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 			results = append(results, s1)
 			// If we've found a verified match with this ID, we don't need to look for any more. So move on to the next ID.
 			if s1.Verified {
+				delete(secretMatches, secretMatch)
 				break
 			}
 		}
@@ -319,56 +330,56 @@ func (s scanner) verifyMatch(ctx context.Context, resIDMatch, resSecretMatch str
 	}
 
 	res, err := client.Do(req)
-	if err == nil {
-		defer res.Body.Close()
-		if res.StatusCode >= 200 && res.StatusCode < 300 {
-			identityInfo := identityRes{}
-			err := json.NewDecoder(res.Body).Decode(&identityInfo)
-			if err == nil {
-				extraData["account"] = identityInfo.GetCallerIdentityResponse.GetCallerIdentityResult.Account
-				extraData["user_id"] = identityInfo.GetCallerIdentityResponse.GetCallerIdentityResult.UserID
-				extraData["arn"] = identityInfo.GetCallerIdentityResponse.GetCallerIdentityResult.Arn
-				return true, extraData, nil
-			} else {
-				return false, nil, err
-			}
-		} else if res.StatusCode == 403 {
-			// Experimentation has indicated that if you make two GetCallerIdentity requests within five seconds that
-			// share a key ID but are signed with different secrets the second one will be rejected with a 403 that
-			// carries a SignatureDoesNotMatch code in its body. This happens even if the second ID-secret pair is
-			// valid. Since this is exactly our access pattern, we need to work around it.
-			//
-			// Fortunately, experimentation has also revealed a workaround: simply resubmit the second request. The
-			// response to the resubmission will be as expected. But there's a caveat: You can't have closed the body of
-			// the response to the original second request, or read to its end, or the resubmission will also yield a
-			// SignatureDoesNotMatch. For this reason, we have to re-request all 403s. We can't re-request only
-			// SignatureDoesNotMatch responses, because we can only tell whether a given 403 is a SignatureDoesNotMatch
-			// after decoding its response body, which requires reading the entire response body, which disables the
-			// workaround.
-			//
-			// We are clearly deep in the guts of AWS implementation details here, so this all might change with no
-			// notice. If you're here because something in this detector broke, you have my condolences.
-			if retryOn403 {
-				return s.verifyMatch(ctx, resIDMatch, resSecretMatch, false)
-			}
-			var body awsErrorResponseBody
-			err = json.NewDecoder(res.Body).Decode(&body)
-			if err == nil {
-				// All instances of the code I've seen in the wild are PascalCased but this check is
-				// case-insensitive out of an abundance of caution
-				if strings.EqualFold(body.Error.Code, "InvalidClientTokenId") {
-					return false, nil, nil
-				} else {
-					return false, nil, fmt.Errorf("request returned status %d with an unexpected reason (%s: %s)", res.StatusCode, body.Error.Code, body.Error.Message)
-				}
-			} else {
-				return false, nil, fmt.Errorf("couldn't parse the sts response body (%v)", err)
-			}
-		} else {
-			return false, nil, fmt.Errorf("request to %v returned unexpected status %d", res.Request.URL, res.StatusCode)
-		}
-	} else {
+	if err != nil {
 		return false, nil, err
+	}
+	defer func() {
+		_, _ = io.Copy(io.Discard, res.Body)
+		_ = res.Body.Close()
+	}()
+
+	if res.StatusCode >= 200 && res.StatusCode < 300 {
+		identityInfo := identityRes{}
+		if err := json.NewDecoder(res.Body).Decode(&identityInfo); err != nil {
+			return false, nil, err
+		}
+
+		extraData["account"] = identityInfo.GetCallerIdentityResponse.GetCallerIdentityResult.Account
+		extraData["user_id"] = identityInfo.GetCallerIdentityResponse.GetCallerIdentityResult.UserID
+		extraData["arn"] = identityInfo.GetCallerIdentityResponse.GetCallerIdentityResult.Arn
+		return true, extraData, nil
+	} else if res.StatusCode == 403 {
+		// Experimentation has indicated that if you make two GetCallerIdentity requests within five seconds that
+		// share a key ID but are signed with different secrets the second one will be rejected with a 403 that
+		// carries a SignatureDoesNotMatch code in its body. This happens even if the second ID-secret pair is
+		// valid. Since this is exactly our access pattern, we need to work around it.
+		//
+		// Fortunately, experimentation has also revealed a workaround: simply resubmit the second request. The
+		// response to the resubmission will be as expected. But there's a caveat: You can't have closed the body of
+		// the response to the original second request, or read to its end, or the resubmission will also yield a
+		// SignatureDoesNotMatch. For this reason, we have to re-request all 403s. We can't re-request only
+		// SignatureDoesNotMatch responses, because we can only tell whether a given 403 is a SignatureDoesNotMatch
+		// after decoding its response body, which requires reading the entire response body, which disables the
+		// workaround.
+		//
+		// We are clearly deep in the guts of AWS implementation details here, so this all might change with no
+		// notice. If you're here because something in this detector broke, you have my condolences.
+		if retryOn403 {
+			return s.verifyMatch(ctx, resIDMatch, resSecretMatch, false)
+		}
+
+		var body awsErrorResponseBody
+		if err = json.NewDecoder(res.Body).Decode(&body); err != nil {
+			return false, nil, fmt.Errorf("couldn't parse the sts response body (%v)", err)
+		}
+		// All instances of the code I've seen in the wild are PascalCased but this check is
+		// case-insensitive out of an abundance of caution
+		if strings.EqualFold(body.Error.Code, "InvalidClientTokenId") {
+			return false, nil, nil
+		}
+		return false, nil, fmt.Errorf("request returned status %d with an unexpected reason (%s: %s)", res.StatusCode, body.Error.Code, body.Error.Message)
+	} else {
+		return false, nil, fmt.Errorf("request to %v returned unexpected status %d", res.Request.URL, res.StatusCode)
 	}
 }
 
