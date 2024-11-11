@@ -42,10 +42,12 @@ func extractSubstrings(b []byte) []byte {
 			field[fieldLen] = c
 			fieldLen++
 		} else {
-			if fieldLen > 5 {
-				buf.Write(field[:fieldLen])
-			}
-			fieldLen = 0
+			field[fieldLen] = 0x1A
+			fieldLen++
+			//if fieldLen > 5 {
+			//	buf.Write(field[:fieldLen])
+			//}
+			//fieldLen = 0
 		}
 
 		if i == len(b)-1 && fieldLen > 5 {
