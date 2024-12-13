@@ -56,7 +56,6 @@ var (
 	onlyVerified        = cli.Flag("only-verified", "Only output verified results.").Hidden().Bool()
 	results             = cli.Flag("results", "Specifies which type(s) of results to output: verified, unknown, unverified, filtered_unverified. Defaults to all types.").String()
 
-	allowVerificationOverlap   = cli.Flag("allow-verification-overlap", "Allow verification of similar credentials across detectors").Bool()
 	filterUnverified           = cli.Flag("filter-unverified", "Only output first unverified result per chunk per detector if there are more than one results.").Bool()
 	filterEntropy              = cli.Flag("filter-entropy", "Filter unverified results with Shannon entropy. Start with 3.0.").Float64()
 	scanEntireChunk            = cli.Flag("scan-entire-chunk", "Scan the entire chunk for secrets.").Hidden().Default("false").Bool()
@@ -495,7 +494,6 @@ func run(state overseer.State) {
 		Dispatcher:            engine.NewPrinterDispatcher(printer),
 		FilterUnverified:      *filterUnverified,
 		FilterEntropy:         *filterEntropy,
-		VerificationOverlap:   *allowVerificationOverlap,
 		Results:               parsedResults,
 		PrintAvgDetectorTime:  *printAvgDetectorTime,
 		ShouldScanEntireChunk: *scanEntireChunk,
