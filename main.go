@@ -19,7 +19,6 @@ import (
 	"github.com/felixge/fgprof"
 	"github.com/go-logr/logr"
 	"github.com/jpillora/overseer"
-	"github.com/mattn/go-isatty"
 	"go.uber.org/automaxprocs/maxprocs"
 
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer"
@@ -34,7 +33,6 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/log"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/output"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/sources"
-	"github.com/trufflesecurity/trufflehog/v3/pkg/tui"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/updater"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/version"
 )
@@ -244,7 +242,6 @@ var (
 	huggingfaceIncludePrs         = huggingfaceScan.Flag("include-prs", "Include pull requests in scan.").Bool()
 
 	analyzeCmd = analyzer.Command(cli)
-	usingTUI   = false
 )
 
 func init() {
@@ -262,18 +259,6 @@ func init() {
 
 	// Support -h for help
 	cli.HelpFlag.Short('h')
-
-	if len(os.Args) <= 1 && isatty.IsTerminal(os.Stdout.Fd()) {
-		args := tui.Run()
-		if len(args) == 0 {
-			os.Exit(0)
-		}
-
-		// Overwrite the Args slice so overseer works properly.
-		os.Args = os.Args[:1]
-		os.Args = append(os.Args, args...)
-		usingTUI = true
-	}
 
 	cmd = kingpin.MustParse(cli.Parse(os.Args[1:]))
 
@@ -328,7 +313,7 @@ func main() {
 
 	if !*noUpdate {
 		topLevelCmd, _, _ := strings.Cut(cmd, " ")
-		updateCfg.Fetcher = updater.Fetcher(topLevelCmd, usingTUI)
+		updateCfg.Fetcher = updater.Fetcher(topLevelCmd)
 	}
 	if version.BuildVersion == "dev" {
 		updateCfg.Fetcher = nil
