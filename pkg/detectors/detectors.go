@@ -109,6 +109,9 @@ type Result struct {
 	// analysis to run. The keys of the map are analyzer specific and
 	// should match what is expected in the corresponding analyzer.
 	AnalysisInfo map[string]string
+
+	Status VerificationStatus
+	Reason string
 }
 
 // SetVerificationError is the only way to set a verification error. Any sensitive values should be passed-in as secrets to be redacted.

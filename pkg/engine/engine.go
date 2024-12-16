@@ -10,8 +10,10 @@ import (
 	"time"
 
 	lru "github.com/hashicorp/golang-lru/v2"
+	"golang.org/x/sync/singleflight"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/trufflesecurity/trufflehog/v3/pkg/cache/simple"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/common"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/config"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/context"
@@ -779,6 +781,17 @@ func (e *Engine) detectorWorker(ctx context.Context) {
 	}
 }
 
+var (
+	detectSingle singleflight.Group
+	resultCache  = simple.NewCache[resultCacheInfo]()
+)
+
+type resultCacheInfo struct {
+	Status    detectors.VerificationStatus
+	Reason    string
+	ExtraData map[string]string
+}
+
 func (e *Engine) detectChunk(ctx context.Context, data detectableChunk) {
 	var start time.Time
 	if e.printAvgDetectorTime {
@@ -805,7 +818,39 @@ func (e *Engine) detectChunk(ctx context.Context, data detectableChunk) {
 		t := time.AfterFunc(detectionTimeout+1*time.Second, func() {
 			ctx.Logger().Error(nil, "a detector ignored the context timeout")
 		})
-		results, err := data.detector.Detector.FromData(ctx, data.chunk.Verify, matchBytes)
+
+		var (
+			results []detectors.Result
+			err     error
+		)
+		if d, ok := data.detector.Detector.(detectors.SinglePartDetector); ok {
+			re, err := d.FindMatches(ctx, data.chunk)
+			if err != nil {
+				ctx.Logger().Error(err, "failed to find matches")
+				continue
+			}
+
+			for _, r := range re {
+				key := d.Type().String() + r
+				if v, ok := resultCache.Get(key); ok {
+					ctx.Logger().Info("Using cache:", "key", key, "value", v)
+					continue
+				}
+
+				res, err, _ := detectSingle.Do(key, func() (any, error) {
+					res, err := d.Verify(ctx, r)
+					resultCache.Set(key, resultCacheInfo{res.Status, res.Reason, res.ExtraData})
+					return nil, err
+				})
+				if err != nil {
+					ctx.Logger().Error(err, "failed to verify matches", "r", r)
+					continue
+				}
+				ctx.Logger().Info("Result is", "result", res)
+			}
+		} else {
+			results, err = data.detector.Detector.FromData(ctx, data.chunk.Verify, matchBytes)
+		}
 		t.Stop()
 		cancel()
 		if err != nil {

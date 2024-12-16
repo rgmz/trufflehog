@@ -12,6 +12,13 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/pb/detectorspb"
 )
 
+var GhDetector = detectors.NewDetectorBuilder().
+	Type(detectorspb.DetectorType_Github).
+	Description("GitHub is a platform for version control and collaboration. Personal access tokens (PATs) can be used to access and modify repositories and other resources.").
+	Keywords("ghp_", "gho_", "ghu_", "ghs_", "ghr_", "github_pat_").
+	Pattern(keyPat).
+	Build()
+
 type Scanner struct {
 	v1.Scanner
 }
