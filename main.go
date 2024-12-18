@@ -19,7 +19,6 @@ import (
 	"github.com/felixge/fgprof"
 	"github.com/go-logr/logr"
 	"github.com/jpillora/overseer"
-	"github.com/mattn/go-isatty"
 	"go.uber.org/automaxprocs/maxprocs"
 
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer"
@@ -34,7 +33,6 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/log"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/output"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/sources"
-	"github.com/trufflesecurity/trufflehog/v3/pkg/tui"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/updater"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/version"
 )
@@ -56,7 +54,6 @@ var (
 	onlyVerified        = cli.Flag("only-verified", "Only output verified results.").Hidden().Bool()
 	results             = cli.Flag("results", "Specifies which type(s) of results to output: verified, unknown, unverified, filtered_unverified. Defaults to all types.").String()
 
-	allowVerificationOverlap   = cli.Flag("allow-verification-overlap", "Allow verification of similar credentials across detectors").Bool()
 	filterUnverified           = cli.Flag("filter-unverified", "Only output first unverified result per chunk per detector if there are more than one results.").Bool()
 	filterEntropy              = cli.Flag("filter-entropy", "Filter unverified results with Shannon entropy. Start with 3.0.").Float64()
 	scanEntireChunk            = cli.Flag("scan-entire-chunk", "Scan the entire chunk for secrets.").Hidden().Default("false").Bool()
@@ -245,7 +242,6 @@ var (
 	huggingfaceIncludePrs         = huggingfaceScan.Flag("include-prs", "Include pull requests in scan.").Bool()
 
 	analyzeCmd = analyzer.Command(cli)
-	usingTUI   = false
 )
 
 func init() {
@@ -263,18 +259,6 @@ func init() {
 
 	// Support -h for help
 	cli.HelpFlag.Short('h')
-
-	if len(os.Args) <= 1 && isatty.IsTerminal(os.Stdout.Fd()) {
-		args := tui.Run()
-		if len(args) == 0 {
-			os.Exit(0)
-		}
-
-		// Overwrite the Args slice so overseer works properly.
-		os.Args = os.Args[:1]
-		os.Args = append(os.Args, args...)
-		usingTUI = true
-	}
 
 	cmd = kingpin.MustParse(cli.Parse(os.Args[1:]))
 
@@ -329,7 +313,7 @@ func main() {
 
 	if !*noUpdate {
 		topLevelCmd, _, _ := strings.Cut(cmd, " ")
-		updateCfg.Fetcher = updater.Fetcher(topLevelCmd, usingTUI)
+		updateCfg.Fetcher = updater.Fetcher(topLevelCmd)
 	}
 	if version.BuildVersion == "dev" {
 		updateCfg.Fetcher = nil
@@ -495,7 +479,6 @@ func run(state overseer.State) {
 		Dispatcher:            engine.NewPrinterDispatcher(printer),
 		FilterUnverified:      *filterUnverified,
 		FilterEntropy:         *filterEntropy,
-		VerificationOverlap:   *allowVerificationOverlap,
 		Results:               parsedResults,
 		PrintAvgDetectorTime:  *printAvgDetectorTime,
 		ShouldScanEntireChunk: *scanEntireChunk,
