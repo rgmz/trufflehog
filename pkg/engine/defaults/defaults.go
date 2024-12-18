@@ -350,6 +350,7 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/hunter"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/hybiscus"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/hypertrack"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/ibmclouduserkey"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/iconfinder"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/iexapis"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/iexcloud"
@@ -1184,7 +1185,7 @@ func buildDetectorList() []detectors.Detector {
 		&hunter.Scanner{},
 		&hybiscus.Scanner{},
 		&hypertrack.Scanner{},
-		// &ibmclouduserkey.Scanner{},
+		&ibmclouduserkey.Scanner{},
 		&iconfinder.Scanner{},
 		&iexapis.Scanner{},
 		&iexcloud.Scanner{},
