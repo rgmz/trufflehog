@@ -61,7 +61,6 @@ require (
 	github.com/kylelemons/godebug v1.1.0
 	github.com/lib/pq v1.10.9
 	github.com/marusama/semaphore/v2 v2.5.0
-	github.com/mattn/go-isatty v0.0.20
 	github.com/mholt/archives v0.0.0-20241216060121-23e0af8fe73d
 	github.com/microsoft/go-mssqldb v1.8.0
 	github.com/mitchellh/go-ps v1.0.0
@@ -212,6 +211,7 @@ require (
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
