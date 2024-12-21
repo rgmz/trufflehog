@@ -87,7 +87,6 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/bitmex"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/blazemeter"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/blitapp"
-	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/blocknative"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/blogger"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/bombbomb"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/boostnote"
@@ -738,6 +737,7 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/trufflehogenterprise"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/twelvedata"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/twilio"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/twilioapikey"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/twist"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/twitch"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/twitchaccesstoken"
@@ -916,7 +916,7 @@ func buildDetectorList() []detectors.Detector {
 		&bitmex.Scanner{},
 		&blazemeter.Scanner{},
 		&blitapp.Scanner{},
-		&blocknative.Scanner{},
+		// &blocknative.Scanner{}, // temporary disabled due to API issue
 		&blogger.Scanner{},
 		&bombbomb.Scanner{},
 		&boostnote.Scanner{},
@@ -1583,6 +1583,7 @@ func buildDetectorList() []detectors.Detector {
 		&trufflehogenterprise.Scanner{},
 		&twelvedata.Scanner{},
 		&twilio.Scanner{},
+		&twilioapikey.Scanner{},
 		&twist.Scanner{},
 		&twitch.Scanner{},
 		&twitchaccesstoken.Scanner{},
