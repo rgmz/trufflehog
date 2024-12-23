@@ -2,6 +2,7 @@ package ibmclouduserkey
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -97,7 +98,25 @@ func verifyMatch(ctx context.Context, client *http.Client, key string) (bool, er
 	switch res.StatusCode {
 	case http.StatusOK:
 		return true, nil
+	case http.StatusBadRequest:
+		var errResp errorResponse
+		if err := json.NewDecoder(res.Body).Decode(&errResp); err != nil {
+			return false, err
+		}
+
+		// Key is not valid.
+		// https://www.ibm.com/docs/sk/cloud-private/3.2.x?topic=service-troubleshooting-key-management-plug-in#api
+		if errResp.ErrorCode == "BXNIM0415E" {
+			return false, nil
+		}
+
+		return false, fmt.Errorf("unexpected error (400): code=%q, message=%q", res.StatusCode, errResp.ErrorMessage)
 	default:
 		return false, fmt.Errorf("unexpected HTTP response status %d", res.StatusCode)
 	}
+}
+
+type errorResponse struct {
+	ErrorCode    string `json:"errorCode"`
+	ErrorMessage string `json:"errorMessage"`
 }
