@@ -2,9 +2,11 @@ package elasticcloud
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	regexp "github.com/wasilibs/go-re2"
 
@@ -29,13 +31,11 @@ func (s Scanner) Description() string {
 }
 
 func (s Scanner) Keywords() []string {
-	return []string{"elasticcloud", "elastic-cloud", "essu"}
+	return []string{"essu_"}
 }
 
 var (
-	defaultClient = common.SaneHttpClient()
-
-	keyPat = regexp.MustCompile(`\b(essu_[a-zA-Z0-9+/]{32,}={0,3})`)
+	keyPat = regexp.MustCompile(`\b(essu_[a-zA-Z0-9+/]{24,}={0,3})`)
 )
 
 // FromData will find and optionally verify Apifonica secrets in a given set of bytes.
@@ -52,24 +52,23 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 	}
 
 	for match := range uniqueMatches {
-		s1 := detectors.Result{
+		r := detectors.Result{
 			DetectorType: detectorspb.DetectorType_ElasticCloud,
 			Raw:          []byte(match),
 		}
 
-		client := defaultClient
-		if s.client != nil {
-			client = s.client
-		}
-
 		if verify {
+			if s.client == nil {
+				s.client = common.SaneHttpClient()
+			}
 
-			isVerified, verificationErr := verifyAPIKey(ctx, client, match)
-			s1.Verified = isVerified
-			s1.SetVerificationError(verificationErr, match)
+			isVerified, extraData, verificationErr := verifyAPIKey(ctx, s.client, match)
+			r.Verified = isVerified
+			r.ExtraData = extraData
+			r.SetVerificationError(verificationErr, match)
 		}
 
-		results = append(results, s1)
+		results = append(results, r)
 	}
 
 	return
@@ -77,17 +76,17 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 
 const elasticCloudAPIBaseURL = "https://api.elastic-cloud.com/api/v1"
 
-func verifyAPIKey(ctx context.Context, c *http.Client, key string) (bool, error) {
+func verifyAPIKey(ctx context.Context, c *http.Client, key string) (bool, map[string]string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, elasticCloudAPIBaseURL+"/deployments", nil)
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
 
 	req.Header.Set("accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("ApiKey %s", key))
 	res, err := c.Do(req)
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
 	defer func() {
 		_, _ = io.Copy(io.Discard, res.Body)
@@ -98,15 +97,40 @@ func verifyAPIKey(ctx context.Context, c *http.Client, key string) (bool, error)
 	// 401 - key is invalid
 	// 403 - key is valid but does not have access to the deployments endpoint
 	switch res.StatusCode {
-	case http.StatusOK, http.StatusForbidden:
-		body, _ := io.ReadAll(res.Body)
-		fmt.Printf("Body is: %q\n", string(body))
-		return true, nil
+	case http.StatusOK:
+		var deployRes deploymentsResponse
+		if err := json.NewDecoder(res.Body).Decode(&deployRes); err != nil {
+			return false, nil, err
+		}
+
+		var extraData map[string]string
+		if len(deployRes.Deployments) > 0 {
+			var names []string
+			for _, d := range deployRes.Deployments {
+				names = append(names, d.Name)
+			}
+			extraData = map[string]string{
+				"deployments": strings.Join(names, ","),
+			}
+		}
+		return true, extraData, nil
 	case http.StatusUnauthorized:
 		// The secret is determinately not verified (nothing to do)
-		return false, nil
+		return false, nil, nil
+	case http.StatusForbidden:
+		return true, nil, nil
 	default:
 		body, _ := io.ReadAll(res.Body)
-		return false, fmt.Errorf("unexpected HTTP response status %d, body=%q", res.StatusCode, string(body))
+		return false, nil, fmt.Errorf("unexpected HTTP response status %d, body=%q", res.StatusCode, string(body))
 	}
+}
+
+// https://www.elastic.co/docs/api/doc/cloud/group/endpoint-deployments
+type deploymentsResponse struct {
+	Deployments []deployment
+}
+
+type deployment struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
 }

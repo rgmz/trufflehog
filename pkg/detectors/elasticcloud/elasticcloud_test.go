@@ -2,10 +2,12 @@ package elasticcloud
 
 import (
 	"context"
+	"testing"
+
 	"github.com/google/go-cmp/cmp"
+
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/engine/ahocorasick"
-	"testing"
 )
 
 func TestElasticCloud_Pattern(t *testing.T) {
@@ -20,6 +22,22 @@ func TestElasticCloud_Pattern(t *testing.T) {
 			name:  "typical pattern",
 			input: "ELASTICCLOUD_KEY = essu_Y2pKSWVE5GToYU9UWmYYYT0VR6VmFRVUpETFlJ9AAA1ZKUk5rZElObEpcxcWVTMU1ibGhQZUdzNk5EWXY1dAAITurr4=",
 			want:  []string{"essu_Y2pKSWVE5GToYU9UWmYYYT0VR6VmFRVUpETFlJ9AAA1ZKUk5rZElObEpcxcWVTMU1ibGhQZUdzNk5EWXY1dAAITurr4="},
+		},
+
+		// Invalid
+		{
+			name:  "invalid - low entropy",
+			input: `essu_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`,
+		},
+		{
+			name: "invalid - incorrect case",
+			input: `      "source": [
+        "#### Anaconda\n",
+        "![](https://2.bp.blogspot.com/-lOwzj1e6RpU/Wf1Kx1Ovl5I/AAAAAAAAAJY/esSu_peLFHEfxXmlnSVgTZoOHLFR2GHFgCLcBGAs/s1600/Capture2.PNG)\n",
+        "\n",
+        "- Где скачать: [официальный сайт](https://www.anaconda.com/download/).\n",
+        "- Как поставить: действовать по инструкции, описанной [там же](https://docs.anaconda.com/anaconda/install/)."
+      ],`,
 		},
 	}
 
