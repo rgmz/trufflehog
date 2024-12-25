@@ -11,7 +11,7 @@ import (
 
 	lru "github.com/hashicorp/golang-lru/v2"
 	"google.golang.org/protobuf/proto"
-
+	
 	"github.com/trufflesecurity/trufflehog/v3/pkg/common"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/config"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/context"
@@ -699,7 +699,7 @@ func (e *Engine) scannerWorker(ctx context.Context) {
 		sourceVerify := chunk.Verify
 		for _, decoder := range e.decoders {
 			decodeStart := time.Now()
-			decoded := decoder.FromChunk(chunk)
+			decoded := decoder.FromChunk(ctx, chunk)
 			decodeTime := time.Since(decodeStart).Microseconds()
 			decodeLatency.WithLabelValues(decoder.Type().String(), chunk.SourceName).Observe(float64(decodeTime))
 
