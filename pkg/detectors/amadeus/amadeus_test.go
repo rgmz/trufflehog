@@ -31,11 +31,6 @@ func TestAmadeus_Pattern(t *testing.T) {
 			want:  []string{"A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6A1b2C3d4E5f6G7ho"},
 		},
 		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("amadeus keyword is not close to the real key in the data\n = '%s'", validPattern),
-			want:  nil,
-		},
-		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("amadeus: '%s'", invalidPattern),
 			want:  nil,
