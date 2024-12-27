@@ -30,17 +30,6 @@ var ResourceTypes = map[string]string{
 	"ASIA": "Temporary (AWS STS) access key IDs",
 }
 
-// UrlEncodedReplacer helps capture base64-encoded results that may be url-encoded.
-// TODO: Add this as a decoder, or make it a more generic.
-var UrlEncodedReplacer = strings.NewReplacer(
-	"%2B", "+",
-	"%2b", "+",
-	"%2F", "/",
-	"%2f", "/",
-	"%3d", "=",
-	"%3D", "=",
-)
-
 // Hashes, like those for git, do technically match the secret pattern.
 // But they are extremely unlikely to be generated as an actual AWS secret.
 // So when we find them, if they're not verified, we should ignore the result.
