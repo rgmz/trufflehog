@@ -11,7 +11,7 @@ import (
 
 	lru "github.com/hashicorp/golang-lru/v2"
 	"google.golang.org/protobuf/proto"
-	
+
 	"github.com/trufflesecurity/trufflehog/v3/pkg/common"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/config"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/context"

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -14,24 +15,26 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	"github.com/trufflesecurity/trufflehog/v3/pkg/common"
+	logContext "github.com/trufflesecurity/trufflehog/v3/pkg/context"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/pb/detectorspb"
 )
 
 type Scanner struct {
 	IncludeExpired bool
+	client         *http.Client
 }
 
 // Ensure the Scanner satisfies the interface at compile time.
-var _ detectors.Detector = (*Scanner)(nil)
-var _ detectors.CustomFalsePositiveChecker = (*Scanner)(nil)
-var _ detectors.MaxSecretSizeProvider = (*Scanner)(nil)
+var _ interface {
+	detectors.Detector
+	detectors.MaxSecretSizeProvider
+	detectors.CustomFalsePositiveChecker
+} = (*Scanner)(nil)
 
-var (
-	// TODO: add base64 encoded key support
-	client = common.RetryableHTTPClient()
-	keyPat = regexp.MustCompile(`(?i)-----\s*?BEGIN[ A-Z0-9_-]*?PRIVATE KEY\s*?-----[\s\S]*?----\s*?END[ A-Z0-9_-]*? PRIVATE KEY\s*?-----`)
-)
+func (s Scanner) Type() detectorspb.DetectorType {
+	return detectorspb.DetectorType_PrivateKey
+}
 
 // Keywords are used for efficiently pre-filtering chunks.
 // Use identifiers in the secret preferably, or the provider name.
@@ -39,63 +42,108 @@ func (s Scanner) Keywords() []string {
 	return []string{"private key"}
 }
 
-const maxPrivateKeySize = 4096
+func (s Scanner) Description() string {
+	return "Private keys are used for securely connecting and authenticating to various systems and services. Exposure of private keys can lead to unauthorized access and data breaches."
+}
 
-// ProvideMaxSecretSize returns the maximum size of a secret that this detector can find.
-func (s Scanner) MaxSecretSize() int64 { return maxPrivateKeySize }
+// MaxSecretSize returns the maximum size of a secret that this detector can find.
+func (s Scanner) MaxSecretSize() int64 { return 4096 }
+
+func (s Scanner) IsFalsePositive(_ detectors.Result) (bool, string) {
+	return false, ""
+}
+
+var keyPat = regexp.MustCompile(`(?i)-----\s*?BEGIN[ A-Z0-9_-]*?PRIVATE KEY\s*?-----[\s\S]*?----\s*?END[ A-Z0-9_-]*? PRIVATE KEY\s*?-----`)
 
 // FromData will find and optionally verify Privatekey secrets in a given set of bytes.
 func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (results []detectors.Result, err error) {
+	logCtx := logContext.AddLogger(ctx)
+	logger := logCtx.Logger().WithName("privatekey")
 	dataStr := string(data)
 
-	matches := keyPat.FindAllString(dataStr, -1)
-	for _, match := range matches {
-		token := normalize(match)
-		if len(token) < 64 {
+	// Deduplicate matches.
+	matches := make(map[string]struct{})
+	for _, match := range keyPat.FindAllString(dataStr, -1) {
+		if len(match) < 64 {
 			continue
 		}
+		if detectors.StringShannonEntropy(match) < 3.5 {
+			continue
+		}
+		matches[match] = struct{}{}
+	}
 
-		s1 := detectors.Result{
-			DetectorType: detectorspb.DetectorType_PrivateKey,
-			Raw:          []byte(token),
-			Redacted:     token[0:64],
+	// Process matches.
+	normalizedKeys := make(map[string]struct{})
+	for match := range matches {
+		key, err := normalizeMatch([]byte(match))
+		if err != nil {
+			if !errors.Is(err, errBase64) {
+				logger.Error(err, "Failed to normalize private key", "match", match)
+			}
+			continue
+		}
+		if _, ok := normalizedKeys[key]; ok {
+			continue
+		}
+		normalizedKeys[key] = struct{}{}
+
+		r := detectors.Result{
+			DetectorType: s.Type(),
+			Raw:          []byte(key),
+			Redacted:     key[0:64],
 			ExtraData:    make(map[string]string),
 		}
 
-		var passphrase string
-		parsedKey, err := ssh.ParseRawPrivateKey([]byte(token))
-		if err != nil && strings.Contains(err.Error(), "private key is passphrase protected") {
-			s1.ExtraData["encrypted"] = "true"
-			parsedKey, passphrase, err = crack([]byte(token))
-			if err != nil {
-				s1.SetVerificationError(err, token)
-				continue
-			}
-			if passphrase != "" {
-				s1.ExtraData["cracked_encryption_passphrase"] = "true"
-			}
-		} else if err != nil {
-			// couldn't parse key, probably invalid
-			continue
-		}
-
-		fingerprint, err := FingerprintPEMKey(parsedKey)
+		var (
+			passphrase  string
+			fingerprint string
+		)
+		parsedKey, err := ssh.ParseRawPrivateKey([]byte(key))
 		if err != nil {
-			continue
+			if strings.Contains(err.Error(), "private key is passphrase protected") {
+				r.ExtraData["encrypted"] = "true"
+				parsedKey, passphrase, err = crack([]byte(key))
+				if err != nil {
+					r.SetVerificationError(err, key)
+					goto End
+				}
+				if passphrase != "" {
+					r.ExtraData["cracked_encryption_passphrase"] = "true"
+				}
+			} else if strings.Contains(err.Error(), "ssh: unsupported key type \"ENCRYPTED PRIVATE KEY\"") {
+				// https://github.com/golang/go/issues/41949
+				r.ExtraData["encrypted"] = "true"
+				r.SetVerificationError(err, key)
+				goto End
+			} else {
+				logger.Error(err, "Failed to parse private key", "match", match, "normalized", key)
+				r.SetVerificationError(err, key)
+				goto End
+			}
 		}
 
 		if verify {
+			fingerprint, err = FingerprintPEMKey(parsedKey)
+			if err != nil {
+				r.SetVerificationError(err, key)
+				goto End
+			}
+
 			var (
 				wg                 sync.WaitGroup
 				extraData          = newExtraData()
 				verificationErrors = newVerificationErrors()
 			)
+			if s.client == nil {
+				s.client = common.RetryableHTTPClient()
+			}
 
 			// Look up certificate information.
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				data, err := lookupFingerprint(ctx, fingerprint, s.IncludeExpired)
+				data, err := lookupFingerprint(ctx, s.client, fingerprint, s.IncludeExpired)
 				if err == nil {
 					if data != nil {
 						extraData.Add("certificate_urls", strings.Join(data.CertificateURLs, ", "))
@@ -133,30 +181,24 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 
 			wg.Wait()
 			if len(extraData.data) > 0 {
-				s1.Verified = true
+				r.Verified = true
 				for k, v := range extraData.data {
-					s1.ExtraData[k] = v
+					r.ExtraData[k] = v
 				}
-			} else {
-				s1.ExtraData = nil
 			}
 			if len(verificationErrors.errors) > 0 {
-				s1.SetVerificationError(fmt.Errorf("verification failures: %s", strings.Join(verificationErrors.errors, ", ")), token)
+				r.SetVerificationError(fmt.Errorf("verification failures: %s", strings.Join(verificationErrors.errors, ", ")), key)
 			}
 		}
 
-		results = append(results, s1)
+	End:
+		if len(r.ExtraData) == 0 {
+			r.ExtraData = nil
+		}
+		results = append(results, r)
 	}
 
 	return results, nil
-}
-
-func (s Scanner) IsFalsePositive(_ detectors.Result) (bool, string) {
-	return false, ""
-}
-
-func (s Scanner) Description() string {
-	return "Private keys are used for securely connecting and authenticating to various systems and services. Exposure of private keys can lead to unauthorized access and data breaches."
 }
 
 type result struct {
@@ -164,25 +206,28 @@ type result struct {
 	GitHubUsername  string
 }
 
-func lookupFingerprint(ctx context.Context, publicKeyFingerprintInHex string, includeExpired bool) (*result, error) {
+func lookupFingerprint(ctx context.Context, client *http.Client, publicKeyFingerprintInHex string, includeExpired bool) (*result, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("https://keychecker.trufflesecurity.com/fingerprint/%s", publicKeyFingerprintInHex), nil)
 	if err != nil {
 		return nil, err
 	}
+
 	res, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	defer res.Body.Close()
+	defer func() {
+		_, _ = io.Copy(io.Discard, res.Body)
+		_ = res.Body.Close()
+	}()
 
-	results := DriftwoodResult{}
+	var results DriftwoodResult
 	err = json.NewDecoder(res.Body).Decode(&results)
 	if err != nil {
 		return nil, err
 	}
 
 	var data *result
-
 	seen := map[string]struct{}{}
 	for _, r := range results.CertificateResults {
 		if _, ok := seen[r.CertificateFingerprint]; ok {
@@ -243,8 +288,4 @@ func (e *verificationErrors) Add(err error) {
 	e.mutex.Lock()
 	e.errors = append(e.errors, err.Error())
 	e.mutex.Unlock()
-}
-
-func (s Scanner) Type() detectorspb.DetectorType {
-	return detectorspb.DetectorType_PrivateKey
 }
