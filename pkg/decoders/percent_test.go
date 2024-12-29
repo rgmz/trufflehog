@@ -9,7 +9,7 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/sources"
 )
 
-func TestUrlDecoder_FromChunk(t *testing.T) {
+func TestPercentDecoder_FromChunk(t *testing.T) {
 	tests := []struct {
 		name    string
 		chunk   *sources.Chunk
@@ -35,10 +35,19 @@ func TestUrlDecoder_FromChunk(t *testing.T) {
 				Data: []byte("https://r2.cloudflarestorage.com/codegeex/codegeex_13b.tar.gz.0?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=b279482b3a1b5758740371cde86a9b62/20230112/us-east-1/s3/aws4_request&X-Amz-Date=20230112T035544Z&X-Amz-Expires=259200&X-Amz-Signature=eaeb7b40bc57c63bbe33991620240e5bdb4bb97f51bc382b32a1a699a47a94ff&X-Amz-SignedHeaders=host\n"),
 			},
 		},
+		{
+			name: "preserve invalid matches",
+			chunk: &sources.Chunk{
+				Data: []byte(`password=%22%C2l3a@521!%22`),
+			},
+			want: &sources.Chunk{
+				Data: []byte(`password="%C2l3a@521!"`),
+			},
+		},
 
 		// Invalid
 		{
-			name: "no escaped",
+			name: "not escaped",
 			chunk: &sources.Chunk{
 				Data: []byte(`-//npm.fontawesome.com/:_authToken=%YOUR_TOKEN%`),
 			},

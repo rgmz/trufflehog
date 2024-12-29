@@ -2,7 +2,6 @@ package decoders
 
 import (
 	"bytes"
-	"fmt"
 	"regexp"
 	"sync"
 
@@ -119,7 +118,6 @@ var percentEncodedPat = regexp.MustCompile(`(?i)%[a-f0-9]{2}`)
 
 func decoderPercent(logger logr.Logger, input []byte) []byte {
 	var (
-		encoded   string
 		decoded   = make([]byte, 0, len(input))
 		lastIndex = 0
 	)
@@ -132,10 +130,9 @@ func decoderPercent(logger logr.Logger, input []byte) []byte {
 		decoded = append(decoded, input[lastIndex:startIndex]...)
 
 		// Append the decoded byte
-		encoded = string(input[startIndex:endIndex])
-		char, ok := percentEncodingToChar[encoded]
+		char, ok := percentEncodingToChar[string(input[startIndex:endIndex])]
 		if !ok {
-			logger.Error(fmt.Errorf("unrecognized encoding"), "Unable to decode percent entity", "match", encoded)
+			// logger.Error(fmt.Errorf("unrecognized encoding"), "Unable to decode percent entity", "match", encoded)
 			continue
 		}
 		decoded = append(decoded, []byte(char)...)
