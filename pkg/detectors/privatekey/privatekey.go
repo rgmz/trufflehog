@@ -117,7 +117,7 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 				r.SetVerificationError(err, key)
 				goto End
 			} else {
-				logger.Error(err, "Failed to parse private key", "match", match, "normalized", key)
+				// logger.Error(err, "Failed to parse private key", "match", match, "normalized", key)
 				r.SetVerificationError(err, key)
 				goto End
 			}
@@ -192,6 +192,17 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 		}
 
 	End:
+		// Sanity check for any gaps with the new implementation.
+		// There's probably a better way to do this.
+		{
+			oldKey := normalizeOld(match)
+			if parsedKey == nil {
+				if parsedOldKey, _ := ssh.ParseRawPrivateKey([]byte(oldKey)); parsedOldKey != nil {
+					logger.Info("New logic missed private key", "old", oldKey, "new", key)
+				}
+			}
+		}
+
 		if len(r.ExtraData) == 0 {
 			r.ExtraData = nil
 		}
