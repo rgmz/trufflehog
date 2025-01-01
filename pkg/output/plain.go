@@ -56,9 +56,9 @@ func (p *PlainPrinter) Print(_ context.Context, r *detectors.ResultWithMetadata)
 	} else {
 		printer = whitePrinter
 		boldWhitePrinter.Print("Found unverified result 🐷🔑❓\n")
-		if out.VerificationError != nil {
-			yellowPrinter.Printf("Verification issue: %s\n", out.VerificationError)
-		}
+	}
+	if out.VerificationError != nil {
+		yellowPrinter.Printf("Verification issue: %s\n", out.VerificationError)
 	}
 	if r.VerificationFromCache {
 		cyanPrinter.Print("(Verification info cached)\n")
