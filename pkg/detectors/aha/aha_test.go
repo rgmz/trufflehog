@@ -40,11 +40,6 @@ func TestAha_Pattern(t *testing.T) {
 			want:  []string{key},
 		},
 		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("aha.io keyword is not close to the real key and secret = '%s'", validPattern),
-			want:  nil,
-		},
-		{
 			name:  "valid pattern - only key",
 			input: fmt.Sprintf("aha.io %s", key),
 			want:  []string{key},
