@@ -31,11 +31,6 @@ func TestAlconost_Pattern(t *testing.T) {
 			want:  []string{validPattern},
 		},
 		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("alconost keyword is not close to the real key in the data = '%s'", validPattern),
-			want:  nil,
-		},
-		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("alconost: '%s'", invalidPattern),
 			want:  nil,

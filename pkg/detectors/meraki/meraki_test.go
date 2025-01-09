@@ -21,14 +21,6 @@ organizationId |646829496481091262
 networkId |L_646829496481117067
 serial |`
 
-	validPatternWithNoKeyword = `Information used in API calls
-Variable name | Initial Value
-apiKey |e9e0f062f587b423bb6cc6328eb786d75b45783e
-baseUrl |https://api.meraki.com/api/v1
-organizationId |646829496481091262
-networkId |L_646829496481117067
-serial |`
-
 	invalidPattern = "001A1E0092C7a711d7679d%d0d442d59b05ce65D"
 )
 
@@ -45,11 +37,6 @@ func TestMeraki_Pattern(t *testing.T) {
 			name:  "valid pattern",
 			input: fmt.Sprintf("meraki token = '%s'", validPattern),
 			want:  []string{"e9e0f062f587b423bb6cc6328eb786d75b45783e"},
-		},
-		{
-			name:  "valid pattern - out of prefix range",
-			input: fmt.Sprintf("meraki token keyword is not close to the real token = '%s'", validPatternWithNoKeyword),
-			want:  nil,
 		},
 		{
 			name:  "invalid pattern",

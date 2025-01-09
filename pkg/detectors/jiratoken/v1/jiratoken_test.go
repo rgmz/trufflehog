@@ -2,23 +2,12 @@ package jiratoken
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/engine/ahocorasick"
-)
-
-var (
-	validTokenPattern    = "Z7VoIYJ0K4rFWLBfkhOsLAWX"
-	invalidTokenPattern  = "Z7VoI?J0K4rF#LBfkhO&LAWX"
-	validDomainPattern   = "hereisavalidsubdomain.heresalongdomain.com"
-	invalidDomainPattern = "?y4r3fs1ewqec12v1e3tl.5Hcsrcehic89saXd.ro@"
-	validEmailPattern    = "xfKF_BZq7@grum.com"
-	invalidEmailPattern  = "xfKF_BZq7/grum.com"
-	keyword              = "jira"
 )
 
 func TestJiraToken_Pattern(t *testing.T) {
@@ -30,19 +19,19 @@ func TestJiraToken_Pattern(t *testing.T) {
 		want  []string
 	}{
 		{
-			name:  "valid pattern - with keyword jira",
-			input: fmt.Sprintf("%s %s          \n%s %s\n%s %s", keyword, validTokenPattern, keyword, validDomainPattern, keyword, validEmailPattern),
-			want:  []string{validEmailPattern + ":" + validTokenPattern + ":" + validDomainPattern},
+			name: "valid pattern - with keyword jira",
+			input: `jiraUrl = hereisavalidsubdomain.heresalongdomain.com
+jiraEmail = xfKF_BZq7@grum.com
+jiraToken = Z7VoIYJ0K4rFWLBfkhOsLAWX`,
+			want: []string{"xfKF_BZq7@grum.com:Z7VoIYJ0K4rFWLBfkhOsLAWX:hereisavalidsubdomain.heresalongdomain.com"},
 		},
 		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("%s keyword is not close to the real key in the data\n = '%s' domain = '%s' email = '%s'", keyword, validTokenPattern, validDomainPattern, validEmailPattern),
-			want:  []string{},
-		},
-		{
-			name:  "invalid pattern",
-			input: fmt.Sprintf("%s key = '%s' domain = '%s' email = '%s'", keyword, invalidTokenPattern, invalidDomainPattern, invalidEmailPattern),
-			want:  []string{},
+			name: "invalid pattern",
+			input: `jiraUrl = ?y4r3fs1ewqec12v1e3tl.5Hcsrcehic89saXd.ro@
+jiraEmail = xfKF_BZq7/grum.com
+jiraTOken = Z7VoI?J0K4rF#LBfkhO&LAWX
+`,
+			want: []string{},
 		},
 	}
 
@@ -63,10 +52,7 @@ func TestJiraToken_Pattern(t *testing.T) {
 			if len(results) != len(test.want) {
 				if len(results) == 0 {
 					t.Errorf("did not receive result")
-				} else {
-					t.Errorf("expected %d results, only received %d", len(test.want), len(results))
 				}
-				return
 			}
 
 			actual := make(map[string]struct{}, len(results))

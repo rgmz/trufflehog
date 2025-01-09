@@ -19,14 +19,13 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/version"
 )
 
-func Fetcher(cmd string, tui bool) fetcher.Interface {
-	return &OSS{Cmd: cmd, TUI: tui}
+func Fetcher(cmd string) fetcher.Interface {
+	return &OSS{Cmd: cmd}
 }
 
 type OSS struct {
 	Interval time.Duration
 	Cmd      string
-	TUI      bool
 	Updated  bool
 }
 
@@ -61,7 +60,6 @@ func (g *OSS) Fetch() (io.Reader, error) {
 		Arch:           runtime.GOARCH,
 		CurrentVersion: version.BuildVersion,
 		Cmd:            g.Cmd,
-		TUI:            g.TUI,
 		Timezone:       zone,
 		Binary:         "trufflehog",
 	}
