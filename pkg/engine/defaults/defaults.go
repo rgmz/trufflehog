@@ -584,7 +584,6 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/replicate"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/replyio"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/requestfinance"
-	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/restpack"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/restpackhtmltopdfapi"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/restpackscreenshotapi"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/revampcrm"
@@ -593,7 +592,6 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/roaring"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/robinhoodcrypto"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/rocketreach"
-	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/rockset"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/roninapp"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/route4me"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/rownd"
@@ -1428,7 +1426,7 @@ func buildDetectorList() []detectors.Detector {
 		&replicate.Scanner{},
 		&replyio.Scanner{},
 		&requestfinance.Scanner{},
-		&restpack.Scanner{},
+		// &restpack.Scanner{},
 		&restpackhtmltopdfapi.Scanner{},
 		&restpackscreenshotapi.Scanner{},
 		&revampcrm.Scanner{},
@@ -1437,7 +1435,7 @@ func buildDetectorList() []detectors.Detector {
 		&roaring.Scanner{},
 		&robinhoodcrypto.Scanner{},
 		&rocketreach.Scanner{},
-		&rockset.Scanner{},
+		// &rockset.Scanner{},
 		&roninapp.Scanner{},
 		&route4me.Scanner{},
 		&rownd.Scanner{},
