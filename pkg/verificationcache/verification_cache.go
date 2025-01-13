@@ -61,6 +61,7 @@ func (v *VerificationCache) FromData(
 			}()
 		}
 
+		ctx.Logger().Info("Calling resultCache == nil FromData")
 		return detector.FromData(ctx, verify, data)
 	}
 

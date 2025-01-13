@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
 	regexp "github.com/wasilibs/go-re2"
+	"golang.org/x/exp/maps"
 
 	"github.com/trufflesecurity/trufflehog/v3/pkg/common"
 	logContext "github.com/trufflesecurity/trufflehog/v3/pkg/context"
@@ -54,13 +56,13 @@ var _ interface {
 	detectors.MultiPartCredentialProvider
 } = (*scanner)(nil)
 
-var (
-	defaultVerificationClient = common.SaneHttpClient()
+func (s scanner) Type() detectorspb.DetectorType {
+	return detectorspb.DetectorType_AWS
+}
 
-	// Make sure that your group is surrounded in boundary characters such as below to reduce false positives.
-	// Key types are from this list https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html#identifiers-unique-ids
-	idPat = regexp.MustCompile(`\b((?:AKIA|ABIA|ACCA)[A-Z0-9]{16})\b`)
-)
+func (s scanner) Description() string {
+	return "AWS (Amazon Web Services) is a comprehensive cloud computing platform offering a wide range of on-demand services like computing power, storage, databases. API keys for AWS can have varying amount of access to these services depending on the IAM policy attached."
+}
 
 // Keywords are used for efficiently pre-filtering chunks.
 // Use identifiers in the secret preferably, or the provider name.
@@ -71,6 +73,16 @@ func (s scanner) Keywords() []string {
 		"ACCA",
 	}
 }
+
+var (
+	defaultVerificationClient = common.SaneHttpClient()
+
+	// Make sure that your group is surrounded in boundary characters such as below to reduce false positives.
+	// Key types are from this list https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html#identifiers-unique-ids
+	idPat = regexp.MustCompile(`\b((?:AKIA|ABIA|ACCA)[A-Z0-9]{16})\b`)
+
+	requestMutex = &aws.KeyMutex{}
+)
 
 // FromData will find and optionally verify AWS secrets in a given set of bytes.
 func (s scanner) FromData(ctx context.Context, verify bool, data []byte) (results []detectors.Result, err error) {
@@ -87,6 +99,10 @@ func (s scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 		secretMatches[matches[1]] = struct{}{}
 	}
 
+	if verify {
+		logger.Info("Testing matches", "ids", idMatches, "secrets", secretMatches)
+	}
+
 	// Process matches.
 	for idMatch := range idMatches {
 		if detectors.StringShannonEntropy(idMatch) < aws.RequiredIdEntropy {
@@ -98,7 +114,9 @@ func (s scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 			}
 		}
 
-		for secretMatch := range secretMatches {
+		sec := maps.Keys(secretMatches)
+		slices.Sort(sec)
+		for _, secretMatch := range sec {
 			if detectors.StringShannonEntropy(secretMatch) < aws.RequiredSecretEntropy {
 				continue
 			}
@@ -153,7 +171,12 @@ func (s scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 			}
 
 			if verify && !isCanary {
-				isVerified, extraData, verificationErr := s.verifyMatch(ctx, idMatch, secretMatch, true)
+				isVerified, extraData, verificationErr := requestMutex.Do(idMatch, func() (bool, map[string]string, error) {
+					logger.Info("[START] Testing AWS key", "key", idMatch, "secret", secretMatch)
+					v, d, e := s.verifyMatch(ctx, idMatch, secretMatch, true)
+					logger.Info("[END  ] Testing AWS key", "key", idMatch, "secret", secretMatch)
+					return v, d, e
+				})
 				s1.Verified = isVerified
 
 				// Log if the calculated ID does not match the ID value from verification.
@@ -170,6 +193,7 @@ func (s scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 			}
 
 			if !s1.Verified && aws.FalsePositiveSecretPat.MatchString(secretMatch) {
+				logger.Info("Skipping false positive: " + secretMatch)
 				// Unverified results that look like hashes are probably not secrets
 				continue
 			}
@@ -180,6 +204,7 @@ func (s scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 				delete(secretMatches, secretMatch)
 				break
 			}
+			time.Sleep(1 * time.Second)
 		}
 	}
 	return results, nil
@@ -201,7 +226,7 @@ func (s scanner) verifyMatch(ctx context.Context, resIDMatch, resSecretMatch str
 	// REQUEST VALUES.
 	now := time.Now().UTC()
 	datestamp := now.Format("20060102")
-	amzDate := now.Format("20060102T150405Z0700")
+	amzDate := now.Format("20060102T150405Z")
 
 	req, err := http.NewRequestWithContext(ctx, method, endpoint, nil)
 	if err != nil {
@@ -292,19 +317,25 @@ func (s scanner) verifyMatch(ctx context.Context, resIDMatch, resSecretMatch str
 		//
 		// We are clearly deep in the guts of AWS implementation details here, so this all might change with no
 		// notice. If you're here because something in this detector broke, you have my condolences.
-		if retryOn403 {
-			return s.verifyMatch(ctx, resIDMatch, resSecretMatch, false)
-		}
 
 		var body aws.ErrorResponseBody
 		if err = json.NewDecoder(res.Body).Decode(&body); err != nil {
 			return false, nil, fmt.Errorf("couldn't parse the sts response body (%v)", err)
 		}
+
+		fmt.Printf("%s [%s:%s] 403: %v\n", time.Now().UTC().Format(http.TimeFormat), resIDMatch, resSecretMatch, body.Error.Code)
+
 		// All instances of the code I've seen in the wild are PascalCased but this check is
 		// case-insensitive out of an abundance of caution
 		if strings.EqualFold(body.Error.Code, "InvalidClientTokenId") {
 			return false, nil, nil
+		} else if strings.EqualFold(body.Error.Code, "SignatureDoesNotMatch") && retryOn403 {
+			// Retry?
+			// https://github.com/aws/aws-sdk-go-v2/discussions/2543
+			time.Sleep(5 * time.Second)
+			return s.verifyMatch(ctx, resIDMatch, resSecretMatch, false)
 		}
+
 		return false, nil, fmt.Errorf("request returned status %d with an unexpected reason (%s: %s)", res.StatusCode, body.Error.Code, body.Error.Message)
 	} else {
 		return false, nil, fmt.Errorf("request to %v returned unexpected status %d", res.Request.URL, res.StatusCode)
@@ -313,12 +344,4 @@ func (s scanner) verifyMatch(ctx context.Context, resIDMatch, resSecretMatch str
 
 func (s scanner) CleanResults(results []detectors.Result) []detectors.Result {
 	return aws.CleanResults(results)
-}
-
-func (s scanner) Type() detectorspb.DetectorType {
-	return detectorspb.DetectorType_AWS
-}
-
-func (s scanner) Description() string {
-	return "AWS (Amazon Web Services) is a comprehensive cloud computing platform offering a wide range of on-demand services like computing power, storage, databases. API keys for AWS can have varying amount of access to these services depending on the IAM policy attached."
 }

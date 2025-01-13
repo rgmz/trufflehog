@@ -60,6 +60,8 @@ var (
 	// Key types are from this list https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html#identifiers-unique-ids
 	idPat      = regexp.MustCompile(`\b((?:ASIA)[A-Z0-9]{16})\b`)
 	sessionPat = regexp.MustCompile(`(?:[^A-Za-z0-9+/]|\A)([a-zA-Z0-9+/]{100,}={0,3})(?:[^A-Za-z0-9+/=]|\z)`)
+
+	requestMutex = &aws.KeyMutex{}
 )
 
 // Keywords are used for efficiently pre-filtering chunks.
@@ -120,7 +122,12 @@ func (s scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 				}
 
 				if verify {
-					isVerified, extraData, verificationErr := s.verifyMatch(ctx, idMatch, secretMatch, sessionMatch, true)
+					isVerified, extraData, verificationErr := requestMutex.Do(idMatch, func() (bool, map[string]string, error) {
+						logger.Info("[START] Testing AWS session key", "key", idMatch, "secret", secretMatch, "session", sessionMatch)
+						v, d, e := s.verifyMatch(ctx, idMatch, secretMatch, sessionMatch, true)
+						logger.Info("[END  ] Testing AWS session key", "key", idMatch, "secret", secretMatch, "session", sessionMatch)
+						return v, d, e
+					})
 					s1.Verified = isVerified
 					if extraData != nil {
 						s1.ExtraData = extraData
