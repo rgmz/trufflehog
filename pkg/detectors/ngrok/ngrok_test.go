@@ -36,11 +36,6 @@ func TestNgrok_Pattern(t *testing.T) {
 			want:  []string{"2WIRSIHOQyHSVklZnoz2k6bTYdH_0E7z0Ta9QEyR1fZvQ0KU9"},
 		},
 		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("%s keyword is not close to the real key in the data\n = '%s'", keyword, validPattern),
-			want:  []string{},
-		},
-		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("%s = '%s'", keyword, invalidPattern),
 			want:  []string{},

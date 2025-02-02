@@ -33,11 +33,6 @@ func TestMattermostPersonalToken_Pattern(t *testing.T) {
 			want:  []string{validKeyPattern + validServerPattern},
 		},
 		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("%s keyword is not close to the real key in the data\n = '%s' '%s'", keyword, validKeyPattern, validServerPattern),
-			want:  []string{},
-		},
-		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("%s key = '%s' url = '%s'", keyword, invalidKeyPattern, invalidServerPattern),
 			want:  []string{},

@@ -224,13 +224,12 @@ func CleanResults(results []Result) []Result {
 	return results
 }
 
-// PrefixRegex ensures that at least one of the given keywords is within
-// 40 characters of the capturing group that follows.
+// PrefixRegex ensures that at least one of the given keywords is within 100 characters or 15 lines.
 // This can help prevent false positives.
 func PrefixRegex(keywords []string) string {
 	pre := `(?i:`
 	middle := strings.Join(keywords, "|")
-	post := `)(?:.|[\n\r]){0,40}?`
+	post := `)(?:.{0,100}?|.*?(?:[\r\n]{1,2}.*?){1,15})`
 	return pre + middle + post
 }
 

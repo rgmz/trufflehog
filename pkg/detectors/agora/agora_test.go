@@ -44,11 +44,6 @@ func TestAgora_Pattern(t *testing.T) {
 			want:  []string{validKeyPattern + validSecretPattern},
 		},
 		{
-			name:  "valid pattern - out of prefix range",
-			input: fmt.Sprintf("agora keyword is not close to the real key or secret = '%s|%s'", validKeyPattern, validSecretPattern),
-			want:  nil,
-		},
-		{
 			name:  "valid pattern - only key",
 			input: fmt.Sprintf("agora key%s", validKeyPattern),
 			want:  nil,
