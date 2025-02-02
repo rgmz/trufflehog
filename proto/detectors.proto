@@ -1024,7 +1024,8 @@ enum DetectorType {
   TwitchAccessToken = 1010;
   TwilioApiKey = 1011;
   Sanity = 1012;
-  ElasticCloud = 1013;
+  AzureRefreshToken = 1013;
+  ElasticCloud = 1014;
 }
 
 message Result {
