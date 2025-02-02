@@ -603,6 +603,7 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/salesflare"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/salesforce"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/salesmate"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/sanity"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/satismeterprojectkey"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/satismeterwritekey"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/saucelabs"
@@ -626,7 +627,8 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/sendbirdorganizationapi"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/sendgrid"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/sendinbluev2"
-	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/sentrytoken"
+	sentrytokenv1 "github.com/trufflesecurity/trufflehog/v3/pkg/detectors/sentrytoken/v1"
+	sentrytokenv2 "github.com/trufflesecurity/trufflehog/v3/pkg/detectors/sentrytoken/v2"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/serphouse"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/serpstack"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/sheety"
@@ -1447,6 +1449,7 @@ func buildDetectorList() []detectors.Detector {
 		&salesflare.Scanner{},
 		&salesforce.Scanner{},
 		&salesmate.Scanner{},
+		&sanity.Scanner{},
 		&satismeterprojectkey.Scanner{},
 		&satismeterwritekey.Scanner{},
 		&saucelabs.Scanner{},
@@ -1470,7 +1473,8 @@ func buildDetectorList() []detectors.Detector {
 		&sendbirdorganizationapi.Scanner{},
 		&sendgrid.Scanner{},
 		&sendinbluev2.Scanner{},
-		&sentrytoken.Scanner{},
+		&sentrytokenv1.Scanner{},
+		&sentrytokenv2.Scanner{},
 		&serphouse.Scanner{},
 		&serpstack.Scanner{},
 		&sheety.Scanner{},
