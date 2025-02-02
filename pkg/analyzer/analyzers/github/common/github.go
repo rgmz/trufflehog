@@ -181,7 +181,7 @@ func PrintGists(gists []*gh.Gist, showAll bool) {
 		} else if !*gist.Public {
 			privateCount++
 			green := color.New(color.FgGreen).SprintFunc()
-			t.AppendRow([]interface{}{green(*gist.ID), green(*gist.HTMLURL), green(*gist.Description), green("true")})
+			t.AppendRow([]interface{}{green(*gist.ID), green(*gist.HTMLURL), green(gist.GetDescription()), green("true")})
 		}
 	}
 	if showAll && len(gists) == 0 {
