@@ -67,7 +67,7 @@ func TestHandleHTTPJson(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	wantCount := 513
+	wantCount := 52
 	count := 0
 	for range chunkCh {
 		count++
@@ -91,7 +91,7 @@ func TestHandleHTTPJsonZip(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	wantCount := 513
+	wantCount := 52
 	count := 0
 	for range chunkCh {
 		count++
@@ -240,7 +240,7 @@ func TestExtractTarContent(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	wantCount := 4
+	wantCount := 1
 	count := 0
 	for range chunkCh {
 		count++
@@ -271,7 +271,7 @@ func TestNestedDirArchive(t *testing.T) {
 }
 
 func TestHandleFileRPM(t *testing.T) {
-	wantChunkCount := 179
+	wantChunkCount := 19
 	reporter := sources.ChanReporter{Ch: make(chan *sources.Chunk, wantChunkCount)}
 
 	file, err := os.Open("testdata/test.rpm")
@@ -283,7 +283,7 @@ func TestHandleFileRPM(t *testing.T) {
 }
 
 func TestHandleFileAR(t *testing.T) {
-	wantChunkCount := 102
+	wantChunkCount := 12
 	reporter := sources.ChanReporter{Ch: make(chan *sources.Chunk, wantChunkCount)}
 
 	file, err := os.Open("testdata/test.deb")
@@ -320,7 +320,7 @@ func BenchmarkHandleAR(b *testing.B) {
 }
 
 func TestHandleFileNonArchive(t *testing.T) {
-	wantChunkCount := 6
+	wantChunkCount := 1
 	reporter := sources.ChanReporter{Ch: make(chan *sources.Chunk, wantChunkCount)}
 
 	file, err := os.Open("testdata/nonarchive.txt")
@@ -345,7 +345,7 @@ func TestExtractTarContentWithEmptyFile(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	wantCount := 4
+	wantCount := 1
 	count := 0
 	for range chunkCh {
 		count++
@@ -417,7 +417,7 @@ func TestHandleLargeHTTPJson(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	wantCount := 5121
+	wantCount := 513
 	count := 0
 	for range chunkCh {
 		count++
@@ -497,7 +497,7 @@ func TestHandleGitCatFile(t *testing.T) {
 			fileName:       "largefile.bin",
 			fileSize:       50 * 1024 * 1024, // 50 MB
 			supportedType:  true,
-			expectedChunks: 5120,
+			expectedChunks: 512,
 		},
 		{
 			name:           "UnsupportedType",

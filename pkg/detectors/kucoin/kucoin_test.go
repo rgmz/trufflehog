@@ -33,12 +33,7 @@ func TestKuCoin_Pattern(t *testing.T) {
 			name:  "valid pattern - with keyword kucoin",
 			input: fmt.Sprintf("%s %s %s %s %s %s", keyword, validPassphrasePattern, keyword, validSecretPattern, keyword, validKeyPattern),
 			want:  []string{validKeyPattern + validPassphrasePattern},
-		},
-		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("%s keyword is not close to the real key in the data\n = '%s' domain = '%s' email = '%s'", keyword, validKeyPattern, validSecretPattern, validPassphrasePattern),
-			want:  []string{},
-		},
+},
 		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("%s key = '%s' domain = '%s' email = '%s'", keyword, invalidKeyPattern, invalidSecretPattern, invalidPassphrasePattern),

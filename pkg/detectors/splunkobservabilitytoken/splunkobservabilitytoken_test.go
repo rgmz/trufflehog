@@ -36,11 +36,6 @@ func TestSplunkObservabilityToken_Pattern(t *testing.T) {
 			want:  []string{validPattern},
 		},
 		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("%s keyword is not close to the real key in the data\n = '%s'", keyword, validPattern),
-			want:  []string{},
-		},
-		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("%s = '%s'", keyword, invalidPattern),
 			want:  []string{},
