@@ -513,7 +513,7 @@ func run(state overseer.State) {
 			logFatal(err, "error running scan")
 		}
 
-		verificationCacheMetrics := struct {
+		verificationCacheMetricsSnapshot := struct {
 			Hits                    int32
 			Misses                  int32
 			HitsWasted              int32
@@ -535,7 +535,7 @@ func run(state overseer.State) {
 			"unverified_secrets", metrics.UnverifiedSecretsFound,
 			"scan_duration", metrics.ScanDuration.String(),
 			"trufflehog_version", version.BuildVersion,
-			"verification_caching", verificationCacheMetrics,
+			"verification_caching", verificationCacheMetricsSnapshot,
 		)
 
 		if metrics.hasFoundResults && *fail {
@@ -543,6 +543,7 @@ func run(state overseer.State) {
 			os.Exit(183)
 		}
 	}
+
 }
 
 func compareScans(ctx context.Context, cmd string, cfg engine.Config) error {

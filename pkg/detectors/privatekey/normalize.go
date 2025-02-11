@@ -161,7 +161,7 @@ func getContentFooterLine(data []byte) string {
 	return ""
 }
 
-func normalizeOld(in string) string {
+func NormalizeOld(in string) string {
 	in = strings.ReplaceAll(in, `"`, "")
 	in = strings.ReplaceAll(in, `'`, "")
 	in = strings.ReplaceAll(in, "\t", "")

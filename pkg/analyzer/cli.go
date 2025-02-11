@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/alecthomas/kingpin/v2"
-
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/airbrake"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/asana"
@@ -20,6 +19,7 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/opsgenie"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/postgres"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/postman"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/privatekey"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/sendgrid"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/shopify"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/slack"
@@ -29,6 +29,11 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/twilio"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/config"
 )
+
+type SecretInfo struct {
+	Parts map[string]string
+	Cfg   *config.Config
+}
 
 var (
 	// TODO: Add list of supported key types.
@@ -110,5 +115,7 @@ func Run(cmd string) {
 		shopify.AnalyzeAndPrintPermissions(cfg, parts[0], parts[1])
 	case "opsgenie":
 		opsgenie.AnalyzeAndPrintPermissions(cfg, key)
+	case "privatekey":
+		privatekey.AnalyzeAndPrintPermissions(cfg, key)
 	}
 }
