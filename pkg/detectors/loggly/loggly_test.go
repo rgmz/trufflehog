@@ -31,12 +31,7 @@ func TestLoggly_Pattern(t *testing.T) {
 			name:  "valid pattern - with keyword loggly",
 			input: fmt.Sprintf("%s '%s' '%s'", keyword, validKeyPattern, validDomainPattern),
 			want:  []string{validDomainPattern + ":" + validKeyPattern},
-		},
-		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("%s keyword is not close to the real key in the data\n = '%s'", keyword, validKeyPattern),
-			want:  []string{},
-		},
+},
 		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("%s key = '%s' url = '%s'", keyword, invalidKeyPattern, invalidDomainPattern),

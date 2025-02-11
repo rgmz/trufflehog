@@ -12,8 +12,10 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/jedib0t/go-pretty/table"
+
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/config"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/common"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/context"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/privatekey"
 	"golang.org/x/crypto/ssh"
@@ -124,7 +126,7 @@ func AnalyzeAndPrintPermissions(cfg *config.Config, key string) {
 		return
 	}
 
-	token := privatekey.Normalize(key)
+	token := privatekey.NormalizeOld(key)
 	if len(token) < 64 {
 		color.Red("[x] Error: Invalid Private Key")
 		return
@@ -283,8 +285,8 @@ func bakeTLSResources(result *privatekey.DriftwoodResult) ([]analyzers.Binding, 
 }
 
 func analyzeFingerprint(ctx context.Context, fingerprint string) (*privatekey.DriftwoodResult, error) {
-
-	result, err := privatekey.LookupFingerprint(ctx, fingerprint)
+	client := common.RetryableHTTPClient()
+	result, err := privatekey.LookupFingerprint(ctx, client, fingerprint)
 	if err != nil {
 		return nil, err
 	}

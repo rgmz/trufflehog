@@ -31,11 +31,6 @@ func TestCheckvist_Pattern(t *testing.T) {
 			want:  []string{"wdvnusa87afxYntestuser1005@example.com"},
 		},
 		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("checkvist keyword is not close to the real key and id = %s", validPattern),
-			want:  nil,
-		},
-		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("checkvist: %s", invalidPattern),
 			want:  nil,

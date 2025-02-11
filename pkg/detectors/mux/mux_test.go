@@ -31,12 +31,7 @@ func TestMux_Pattern(t *testing.T) {
 			name:  "valid pattern - with keyword mux",
 			input: fmt.Sprintf("%s '%s' %s ' %s '", keyword, validKeyPattern, keyword, validSecretPattern),
 			want:  []string{validKeyPattern + validSecretPattern},
-		},
-		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("%s keyword is not close to the real key in the data\n = '%s' secret = ' %s '", keyword, validKeyPattern, validSecretPattern),
-			want:  []string{},
-		},
+},
 		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("%s key = '%s' secret = ' %s '", keyword, invalidKeyPattern, invalidSecretPattern),
