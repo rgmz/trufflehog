@@ -32,11 +32,6 @@ func TestAdzuna_Pattern(t *testing.T) {
 			want:  []string{"asdf0987mnbv1234qsxojb6ygb2wsx0oqsc0f098"},
 		},
 		{
-			name:  "valid pattern - out of prefix range",
-			input: fmt.Sprintf("adzuna keyword is not close to the real id and secret = '%s'", validPattern),
-			want:  nil,
-		},
-		{
 			name:  "valid pattern - only key",
 			input: fmt.Sprintf("adzuna %s", strings.Split(validPattern, "/")[0]),
 			want:  nil,

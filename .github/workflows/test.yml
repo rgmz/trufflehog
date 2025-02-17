@@ -53,7 +53,7 @@ jobs:
         with:
           report_paths: "tmp/test-results/*.xml"
   test-community:
-    if: ${{ github.event.pull_request.head.repo.fork }}
+    if: ${{ github.event.pull_request.head.repo.fork || github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     permissions:
       actions: "read"

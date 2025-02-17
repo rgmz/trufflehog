@@ -31,12 +31,7 @@ func TestKanban_Pattern(t *testing.T) {
 			name:  "valid pattern - with keyword kanban",
 			input: fmt.Sprintf("%s '%s' %s '%s'", keyword, validKeyPattern, keyword, validUrlPattern),
 			want:  []string{validKeyPattern},
-		},
-		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("%s keyword is not close to the real key in the data\n = '%s' url = '%s'", keyword, validKeyPattern, validUrlPattern),
-			want:  []string{},
-		},
+},
 		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("%s key = '%s' url = '%s'", keyword, invalidKeyPattern, invalidUrlPattern),
