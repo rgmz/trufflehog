@@ -321,6 +321,9 @@ func (s *Source) scanCollection(ctx context.Context, chunksChan chan *sources.Ch
 	})
 	metadata.LocationType = source_metadatapb.PostmanLocationType_UNKNOWN_POSTMAN
 
+	// collections don't have URLs in the Postman API, but we can scan the Authorization section without it.
+	s.scanAuth(ctx, chunksChan, metadata, collection.Auth, URL{})
+
 	for _, event := range collection.Events {
 		s.scanEvent(ctx, chunksChan, metadata, event)
 	}
@@ -492,7 +495,11 @@ func (s *Source) scanAuth(ctx context.Context, chunksChan chan *sources.Chunk, m
 	}
 
 	if !m.fromLocal {
-		m.Link += "?tab=auth"
+		if strings.Contains(m.Type, REQUEST_TYPE) {
+			m.Link += "?tab=auth"
+		} else {
+			m.Link += "?tab=authorization"
+		}
 		m.Type += " > authorization"
 	}
 
@@ -550,9 +557,47 @@ func (s *Source) scanHTTPRequest(ctx context.Context, chunksChan chan *sources.C
 		s.scanAuth(ctx, chunksChan, metadata, r.Auth, r.URL)
 	}
 
-	// We would scan the body, but currently the body has different radio buttons that can be scanned but only the selected one is scanned. The unselected radio button options can still
-	// have secrets in them but will not be scanned. The selction of the radio button will also change the secret metadata for that particular scanning pass and can create confusion for
-	// the user as to the status of a secret. We will reimplement at some point.
+	if r.Body.Mode != "" {
+		metadata.Type = originalType + " > body"
+		s.scanRequestBody(ctx, chunksChan, metadata, r.Body)
+	}
+}
+
+func (s *Source) scanRequestBody(ctx context.Context, chunksChan chan *sources.Chunk, m Metadata, b Body) {
+	if !m.fromLocal {
+		m.Link = m.Link + "?tab=body"
+	}
+	originalType := m.Type
+	switch b.Mode {
+	case "formdata":
+		m.Type = originalType + " > form data"
+		vars := VariableData{
+			KeyValues: b.FormData,
+		}
+		m.LocationType = source_metadatapb.PostmanLocationType_REQUEST_BODY_FORM_DATA
+		s.scanVariableData(ctx, chunksChan, m, vars)
+		m.LocationType = source_metadatapb.PostmanLocationType_UNKNOWN_POSTMAN
+	case "urlencoded":
+		m.Type = originalType + " > url encoded"
+		vars := VariableData{
+			KeyValues: b.URLEncoded,
+		}
+		m.LocationType = source_metadatapb.PostmanLocationType_REQUEST_BODY_URL_ENCODED
+		s.scanVariableData(ctx, chunksChan, m, vars)
+		m.LocationType = source_metadatapb.PostmanLocationType_UNKNOWN_POSTMAN
+	case "raw":
+		m.Type = originalType + " > raw"
+		data := b.Raw
+		m.LocationType = source_metadatapb.PostmanLocationType_REQUEST_BODY_RAW
+		s.scanData(ctx, chunksChan, s.formatAndInjectKeywords(s.buildSubstitueSet(m, data)), m)
+		m.LocationType = source_metadatapb.PostmanLocationType_UNKNOWN_POSTMAN
+	case "graphql":
+		m.Type = originalType + " > graphql"
+		data := b.GraphQL.Query + " " + b.GraphQL.Variables
+		m.LocationType = source_metadatapb.PostmanLocationType_REQUEST_BODY_GRAPHQL
+		s.scanData(ctx, chunksChan, s.formatAndInjectKeywords(s.buildSubstitueSet(m, data)), m)
+		m.LocationType = source_metadatapb.PostmanLocationType_UNKNOWN_POSTMAN
+	}
 }
 
 func (s *Source) scanHTTPResponse(ctx context.Context, chunksChan chan *sources.Chunk, m Metadata, response Response) {

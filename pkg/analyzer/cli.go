@@ -5,16 +5,20 @@ import (
 	"strings"
 
 	"github.com/alecthomas/kingpin/v2"
+
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/airbrake"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/anthropic"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/asana"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/bitbucket"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/dockerhub"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/github"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/gitlab"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/huggingface"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/mailchimp"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/mailgun"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/mysql"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/notion"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/openai"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/opsgenie"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/postgres"
@@ -117,5 +121,12 @@ func Run(cmd string) {
 		opsgenie.AnalyzeAndPrintPermissions(cfg, key)
 	case "privatekey":
 		privatekey.AnalyzeAndPrintPermissions(cfg, key)
+	case "notion":
+		notion.AnalyzeAndPrintPermissions(cfg, key)
+	case "dockerhub":
+		parts := strings.SplitN(key, ":", 2)
+		dockerhub.AnalyzeAndPrintPermissions(cfg, parts[0], parts[1])
+	case "anthropic":
+		anthropic.AnalyzeAndPrintPermissions(cfg, key)
 	}
 }

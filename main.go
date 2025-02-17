@@ -543,7 +543,6 @@ func run(state overseer.State) {
 			os.Exit(183)
 		}
 	}
-
 }
 
 func compareScans(ctx context.Context, cmd string, cfg engine.Config) error {
