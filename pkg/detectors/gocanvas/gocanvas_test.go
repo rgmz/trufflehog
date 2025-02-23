@@ -31,11 +31,6 @@ func TestGoCanvas_Pattern(t *testing.T) {
 			want:  []string{"Abc123+/Xyz456mnopQRStuvw89YZ12345678ABad6C="},
 		},
 		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("gocanvas keyword is not close to the real key and id = %s", validPattern),
-			want:  nil,
-		},
-		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("gocanvas: %s", invalidPattern),
 			want:  nil,

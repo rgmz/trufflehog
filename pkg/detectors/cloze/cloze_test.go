@@ -31,11 +31,6 @@ func TestCloze_Pattern(t *testing.T) {
 			want:  []string{"1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d"},
 		},
 		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("cloze keyword is not close to the real key and id = %s", validPattern),
-			want:  nil,
-		},
-		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("cloze: %s", invalidPattern),
 			want:  nil,

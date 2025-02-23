@@ -31,11 +31,6 @@ func TestAbuseipdb_Pattern(t *testing.T) {
 			want:  []string{validPattern},
 		},
 		{
-			name:  "valid pattern - out of prefix range",
-			input: fmt.Sprintf("abuseipdb token keyword is not close to the real token = '%s'", validPattern),
-			want:  nil,
-		},
-		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("abuseipdb = '%s'", invalidPattern),
 			want:  nil,

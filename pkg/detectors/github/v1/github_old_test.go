@@ -42,6 +42,35 @@ func TestGithub_Pattern(t *testing.T) {
 			input: validPattern,
 			want:  []string{secret},
 		},
+
+		// Invalid
+		{
+			name:  "invalid - uppercase",
+			input: `token = "EF321DEC2ADAB597C9B1727638A5185EAC7CEADB"`,
+		},
+		{
+			name:  "invalid - low entropy",
+			input: `gh_token = xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`,
+		},
+		{
+
+			name: "invalid - githubusercontent",
+			input: `
+      {
+        github: "zpinto",
+        name: "Zachary Pinto",
+        shortname: "Zach",
+        university: "University of California, Irvine",
+        city: "Irvine",
+        avatar: "https://avatars3.githubusercontent.com/u/20071182?s=460&u=df311dec2adab597c9b1727638a5385eac7ceadb&v=4",
+        url: "/preview-template/campus-experts/campus-experts.github.io/pr/3628zpinto"
+      },
+	- login: edreisMu
+	  count: 1.0209057574170197
+	  avatarUrl: https://avatars.githubusercontent.com/u/16641288?u=f659a34367a54ea7ac49bc2a51ac27f4a72c770b&v=4
+	  url: https://github.com/edreisMu
+`,
+		},
 	}
 
 	for _, test := range tests {
@@ -62,7 +91,7 @@ func TestGithub_Pattern(t *testing.T) {
 				if len(results) == 0 {
 					t.Errorf("did not receive result")
 				} else {
-					t.Errorf("expected %d results, only received %d", len(test.want), len(results))
+					t.Errorf("expected %d results, received %d", len(test.want), len(results))
 				}
 				return
 			}
