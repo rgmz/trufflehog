@@ -8,6 +8,7 @@ import (
 
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/airbrake"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/airtable"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/anthropic"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/asana"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/bitbucket"
@@ -128,5 +129,7 @@ func Run(cmd string) {
 		dockerhub.AnalyzeAndPrintPermissions(cfg, parts[0], parts[1])
 	case "anthropic":
 		anthropic.AnalyzeAndPrintPermissions(cfg, key)
+	case "airtable":
+		airtable.AnalyzeAndPrintPermissions(cfg, key)
 	}
 }

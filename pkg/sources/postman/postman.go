@@ -184,6 +184,7 @@ func (s *Source) Chunks(ctx context.Context, chunksChan chan *sources.Chunk, _ .
 		if err != nil {
 			return fmt.Errorf("error getting workspace %s: %w", workspaceID, err)
 		}
+		s.SetProgressOngoing(fmt.Sprintf("Scanning workspace %s", workspaceID), "")
 		if err = s.scanWorkspace(ctx, chunksChan, w); err != nil {
 			return fmt.Errorf("error scanning workspace %s: %w", workspaceID, err)
 		}
@@ -199,6 +200,7 @@ func (s *Source) Chunks(ctx context.Context, chunksChan chan *sources.Chunk, _ .
 		if err != nil {
 			return fmt.Errorf("error getting collection %s: %w", collectionID, err)
 		}
+		s.SetProgressOngoing(fmt.Sprintf("Scanning collection %s", collectionID), "")
 		s.scanCollection(ctx, chunksChan, Metadata{}, collection)
 	}
 
@@ -209,12 +211,14 @@ func (s *Source) Chunks(ctx context.Context, chunksChan chan *sources.Chunk, _ .
 			return fmt.Errorf("error enumerating postman workspaces: %w", err)
 		}
 		for _, workspace := range workspaces {
+			s.SetProgressOngoing(fmt.Sprintf("Scanning workspace %s", workspace.ID), "")
 			if err = s.scanWorkspace(ctx, chunksChan, workspace); err != nil {
 				return fmt.Errorf("error scanning workspace %s: %w", workspace.ID, err)
 			}
 		}
 	}
 
+	s.SetProgressComplete(1, 1, "Completed scanning workspaces", "")
 	return nil
 }
 
@@ -329,16 +333,15 @@ func (s *Source) scanCollection(ctx context.Context, chunksChan chan *sources.Ch
 	}
 
 	for _, item := range collection.Items {
-		s.scanItem(ctx, chunksChan, collection, metadata, item)
+		s.scanItem(ctx, chunksChan, collection, metadata, item, "")
 	}
 
 }
 
-func (s *Source) scanItem(ctx context.Context, chunksChan chan *sources.Chunk, collection Collection, metadata Metadata, item Item) {
+func (s *Source) scanItem(ctx context.Context, chunksChan chan *sources.Chunk, collection Collection, metadata Metadata, item Item, parentItemId string) {
 	s.attemptToAddKeyword(item.Name)
 
 	// override the base collection metadata with item-specific metadata
-	metadata.FolderID = item.ID
 	metadata.Type = FOLDER_TYPE
 	if metadata.FolderName != "" {
 		// keep track of the folder hierarchy
@@ -353,13 +356,22 @@ func (s *Source) scanItem(ctx context.Context, chunksChan chan *sources.Chunk, c
 	}
 	// recurse through the folders
 	for _, subItem := range item.Items {
-		s.scanItem(ctx, chunksChan, collection, metadata, subItem)
+		s.scanItem(ctx, chunksChan, collection, metadata, subItem, item.UID)
 	}
 
+	// The assignment of the folder ID to be the current item UID is due to wanting to assume that your current item is a folder unless you have request data inside of your item.
+	// If your current item is a folder, you will want the folder ID to match the UID of the current item.
+	// If your current item is a request, you will want the folder ID to match the UID of the parent folder.
+	// If the request is at the root of a collection and has no parent folder, the folder ID will be empty.
+	metadata.FolderID = item.UID
 	// check if there are any requests in the folder
 	if item.Request.Method != "" {
 		metadata.FolderName = strings.Replace(metadata.FolderName, (" > " + item.Name), "", -1)
-		metadata.RequestID = item.ID
+		metadata.FolderID = parentItemId
+		if metadata.FolderID == "" {
+			metadata.FolderName = ""
+		}
+		metadata.RequestID = item.UID
 		metadata.RequestName = item.Name
 		metadata.Type = REQUEST_TYPE
 		if item.UID != "" {
@@ -380,14 +392,6 @@ func (s *Source) scanItem(ctx context.Context, chunksChan chan *sources.Chunk, c
 
 	for _, event := range item.Events {
 		s.scanEvent(ctx, chunksChan, metadata, event)
-	}
-
-	if metadata.RequestID != "" {
-		metadata.LocationType = source_metadatapb.PostmanLocationType_REQUEST_AUTHORIZATION
-	} else if metadata.FolderID != "" {
-		metadata.LocationType = source_metadatapb.PostmanLocationType_FOLDER_AUTHORIZATION
-	} else if metadata.CollectionInfo.UID != "" {
-		metadata.LocationType = source_metadatapb.PostmanLocationType_COLLECTION_AUTHORIZATION
 	}
 	// an auth all by its lonesome could be inherited to subfolders and requests
 	s.scanAuth(ctx, chunksChan, metadata, item.Auth, item.Request.URL)
