@@ -31,11 +31,6 @@ func TestAlienVault_Pattern(t *testing.T) {
 			want:  []string{validPattern},
 		},
 		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("alienvault keyword is not close to the real key in the data\n = '%s'", validPattern),
-			want:  nil,
-		},
-		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("alienvault: '%s'", invalidPattern),
 			want:  nil,

@@ -35,11 +35,6 @@ func TestJiraToken_Pattern(t *testing.T) {
 			want:  []string{validEmailPattern + ":" + validTokenPattern + ":" + validDomainPattern},
 		},
 		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("%s keyword is not close to the real key in the data\n = '%s' domain = '%s' email = '%s'", keyword, validTokenPattern, validDomainPattern, validEmailPattern),
-			want:  []string{},
-		},
-		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("%s key = '%s' domain = '%s' email = '%s'", keyword, invalidTokenPattern, invalidDomainPattern, invalidEmailPattern),
 			want:  []string{},

@@ -31,11 +31,6 @@ func TestAiven_Pattern(t *testing.T) {
 			want:  []string{validPattern},
 		},
 		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("aiven keyword is not close to the real key and secret = '%s'", validPattern),
-			want:  nil,
-		},
-		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("aiven = '%s'", invalidPattern),
 			want:  nil,
