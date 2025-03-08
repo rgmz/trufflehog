@@ -28,7 +28,7 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/verificationcache"
 )
 
-var detectionTimeout = 10 * time.Second
+var detectionTimeout = detectors.DefaultResponseTimeout
 
 // Metrics for the scan engine for external consumption.
 type Metrics struct {

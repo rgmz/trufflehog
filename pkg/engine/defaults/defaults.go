@@ -15,6 +15,7 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/airship"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/airtableapikey"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/airtableoauth"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/airtablepersonalaccesstoken"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/airvisual"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/aiven"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/alchemy"
@@ -532,6 +533,7 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/pipedrive"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/pivotaltracker"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/pixabay"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/plaidkey"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/planetscale"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/planetscaledb"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/planviewleankit"
@@ -841,6 +843,7 @@ func buildDetectorList() []detectors.Detector {
 		&airship.Scanner{},
 		&airtableapikey.Scanner{},
 		&airtableoauth.Scanner{},
+		&airtablepersonalaccesstoken.Scanner{},
 		&airvisual.Scanner{},
 		&aiven.Scanner{},
 		&alchemy.Scanner{},
@@ -1376,7 +1379,7 @@ func buildDetectorList() []detectors.Detector {
 		&pipedrive.Scanner{},
 		&pivotaltracker.Scanner{},
 		&pixabay.Scanner{},
-		// &plaidkey.Scanner{},
+		&plaidkey.Scanner{},
 		&planetscale.Scanner{},
 		&planetscaledb.Scanner{},
 		&planviewleankit.Scanner{},

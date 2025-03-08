@@ -430,7 +430,9 @@ func run(state overseer.State) {
 	}
 
 	if *detectorTimeout != 0 {
+		logger.Info("Setting detector timeout", "timeout", detectorTimeout.String())
 		engine.SetDetectorTimeout(*detectorTimeout)
+		detectors.OverrideDetectorTimeout(*detectorTimeout)
 	}
 	if *archiveMaxSize != 0 {
 		handlers.SetArchiveMaxSize(int(*archiveMaxSize))

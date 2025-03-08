@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/trufflesecurity/trufflehog/v3/pkg/context"
+
 	"github.com/trufflesecurity/trufflehog/v3/pkg/pb/source_metadatapb"
 )
 
@@ -249,36 +251,43 @@ func (c *Client) getPostmanReq(url string, headers map[string]string) (*http.Res
 
 // EnumerateWorkspaces returns the workspaces for a given user (both private, public, team and personal).
 // Consider adding additional flags to support filtering.
-func (c *Client) EnumerateWorkspaces() ([]Workspace, error) {
-	var workspaces []Workspace
+func (c *Client) EnumerateWorkspaces(ctx context.Context) ([]Workspace, error) {
+	ctx.Logger().V(2).Info("enumerating workspaces")
 	workspacesObj := struct {
 		Workspaces []Workspace `json:"workspaces"`
 	}{}
 
 	r, err := c.getPostmanReq("https://api.getpostman.com/workspaces", nil)
 	if err != nil {
-		err = fmt.Errorf("could not get workspaces")
-		return workspaces, err
+		return nil, fmt.Errorf("could not get workspaces during enumeration: %w", err)
 	}
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		err = fmt.Errorf("could not read response body for workspaces")
-		return workspaces, err
+		return nil, fmt.Errorf("could not read response body for workspaces during enumeration: %w", err)
 	}
 	r.Body.Close()
 
 	if err := json.Unmarshal([]byte(body), &workspacesObj); err != nil {
-		err = fmt.Errorf("could not unmarshal workspaces JSON")
-		return workspaces, err
+		return nil, fmt.Errorf("could not unmarshal workspaces JSON during enumeration: %w", err)
+	}
+
+	for i, workspace := range workspacesObj.Workspaces {
+		tempWorkspace, err := c.GetWorkspace(ctx, workspace.ID)
+		if err != nil {
+			return nil, fmt.Errorf("could not get workspace %q (%s) during enumeration: %w", workspace.Name, workspace.ID, err)
+		}
+		workspacesObj.Workspaces[i] = tempWorkspace
+
+		ctx.Logger().V(3).Info("individual workspace getting added to the slice", "workspace", workspacesObj.Workspaces[i])
 	}
 
 	return workspacesObj.Workspaces, nil
 }
 
 // GetWorkspace returns the workspace for a given workspace
-func (c *Client) GetWorkspace(workspaceUUID string) (Workspace, error) {
-	var workspace Workspace
+func (c *Client) GetWorkspace(ctx context.Context, workspaceUUID string) (Workspace, error) {
+	ctx.Logger().V(2).Info("getting workspace", "workspace", workspaceUUID)
 	obj := struct {
 		Workspace Workspace `json:"workspace"`
 	}{}
@@ -286,20 +295,17 @@ func (c *Client) GetWorkspace(workspaceUUID string) (Workspace, error) {
 	url := fmt.Sprintf(WORKSPACE_URL, workspaceUUID)
 	r, err := c.getPostmanReq(url, nil)
 	if err != nil {
-		err = fmt.Errorf("could not get workspace: %s", workspaceUUID)
-		return workspace, err
+		return Workspace{}, fmt.Errorf("could not get workspace (%s): %w", workspaceUUID, err)
 	}
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		err = fmt.Errorf("could not read response body for workspace: %s", workspaceUUID)
-		return workspace, err
+		return Workspace{}, fmt.Errorf("could not read response body for workspace (%s): %w", workspaceUUID, err)
 	}
 	r.Body.Close()
 
 	if err := json.Unmarshal([]byte(body), &obj); err != nil {
-		err = fmt.Errorf("could not unmarshal workspace JSON for workspace: %s", workspaceUUID)
-		return workspace, err
+		return Workspace{}, fmt.Errorf("could not unmarshal workspace JSON for workspace (%s): %w", workspaceUUID, err)
 	}
 
 	return obj.Workspace, nil
@@ -314,19 +320,16 @@ func (c *Client) GetEnvironmentVariables(environment_uuid string) (VariableData,
 	url := fmt.Sprintf(ENVIRONMENTS_URL, environment_uuid)
 	r, err := c.getPostmanReq(url, nil)
 	if err != nil {
-		err = fmt.Errorf("could not get env variables for environment: %s", environment_uuid)
-		return VariableData{}, err
+		return VariableData{}, fmt.Errorf("could not get env variables for environment (%s): %w", environment_uuid, err)
 	}
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		err = fmt.Errorf("could not read env var response body for environment: %s", environment_uuid)
-		return VariableData{}, err
+		return VariableData{}, fmt.Errorf("could not read env var response body for environment (%s): %w", environment_uuid, err)
 	}
 	r.Body.Close()
 	if err := json.Unmarshal([]byte(body), &obj); err != nil {
-		err = fmt.Errorf("could not unmarshal env variables JSON for environment: %s", environment_uuid)
-		return VariableData{}, err
+		return VariableData{}, fmt.Errorf("could not unmarshal env variables JSON for environment (%s): %w", environment_uuid, err)
 	}
 
 	return obj.VariableData, nil
@@ -341,19 +344,16 @@ func (c *Client) GetCollection(collection_uuid string) (Collection, error) {
 	url := fmt.Sprintf(COLLECTIONS_URL, collection_uuid)
 	r, err := c.getPostmanReq(url, nil)
 	if err != nil {
-		err = fmt.Errorf("could not get collection: %s", collection_uuid)
-		return Collection{}, err
+		return Collection{}, fmt.Errorf("could not get collection (%s): %w", collection_uuid, err)
 	}
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		err = fmt.Errorf("could not read response body for collection: %s", collection_uuid)
-		return Collection{}, err
+		return Collection{}, fmt.Errorf("could not read response body for collection (%s): %w", collection_uuid, err)
 	}
 	r.Body.Close()
 	if err := json.Unmarshal([]byte(body), &obj); err != nil {
-		err = fmt.Errorf("could not unmarshal JSON for collection: %s", collection_uuid)
-		return Collection{}, err
+		return Collection{}, fmt.Errorf("could not unmarshal JSON for collection (%s): %w", collection_uuid, err)
 	}
 
 	return obj.Collection, nil

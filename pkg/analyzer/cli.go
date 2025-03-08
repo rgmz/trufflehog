@@ -8,11 +8,14 @@ import (
 
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/airbrake"
-	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/airtable"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/airtable/airtableoauth"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/airtable/airtablepat"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/anthropic"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/asana"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/bitbucket"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/digitalocean"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/dockerhub"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/elevenlabs"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/github"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/gitlab"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/huggingface"
@@ -22,6 +25,7 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/notion"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/openai"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/opsgenie"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/planetscale"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/postgres"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/postman"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/privatekey"
@@ -129,7 +133,16 @@ func Run(cmd string) {
 		dockerhub.AnalyzeAndPrintPermissions(cfg, parts[0], parts[1])
 	case "anthropic":
 		anthropic.AnalyzeAndPrintPermissions(cfg, key)
-	case "airtable":
-		airtable.AnalyzeAndPrintPermissions(cfg, key)
+	case "digitalocean":
+		digitalocean.AnalyzeAndPrintPermissions(cfg, key)
+	case "elevenlabs":
+		elevenlabs.AnalyzeAndPrintPermissions(cfg, key)
+	case "planetscale":
+		parts := strings.SplitN(key, ":", 2)
+		planetscale.AnalyzeAndPrintPermissions(cfg, parts[0], parts[1])
+	case "airtableoauth":
+		airtableoauth.AnalyzeAndPrintPermissions(cfg, key)
+	case "airtablepat":
+		airtablepat.AnalyzeAndPrintPermissions(cfg, key)
 	}
 }
