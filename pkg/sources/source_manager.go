@@ -154,9 +154,6 @@ func (s *SourceManager) EnumerateAndScan(ctx context.Context, sourceName string,
 		defer progress.Finish()
 		defer sem.Release(1)
 		defer s.wg.Done()
-		ctx := context.WithValues(ctx,
-			"source_manager_worker_id", common.RandomID(5),
-		)
 		defer common.Recover(ctx)
 		defer cancel(nil)
 		if err := s.run(ctx, source, progress, targets...); err != nil {
@@ -553,8 +550,7 @@ func (s *SourceManager) runWithUnits(ctx context.Context, source SourceUnitEnumC
 			// TODO: Catch panics and add to report.
 			defer close(chunkReporter.chunkCh)
 			id, kind := unit.SourceUnitID()
-			ctx := context.WithValues(ctx, "unit_kind", kind, "unit", id)
-			ctx.Logger().V(3).Info("chunking unit")
+			ctx.Logger().V(3).Info("chunking unit", "unit_kind", kind, "unit", id)
 			if err := source.ChunkUnit(ctx, unit, chunkReporter); err != nil {
 				report.ReportError(Fatal{ChunkError{Unit: unit, Err: err}})
 				catchFirstFatal(Fatal{err})
