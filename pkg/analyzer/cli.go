@@ -18,7 +18,9 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/elevenlabs"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/github"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/gitlab"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/groq"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/huggingface"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/launchdarkly"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/mailchimp"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/mailgun"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/mysql"
@@ -144,5 +146,9 @@ func Run(cmd string) {
 		airtableoauth.AnalyzeAndPrintPermissions(cfg, key)
 	case "airtablepat":
 		airtablepat.AnalyzeAndPrintPermissions(cfg, key)
+	case "groq":
+		groq.AnalyzeAndPrintPermissions(cfg, key)
+	case "launchdarkly":
+		launchdarkly.AnalyzeAndPrintPermissions(cfg, key)
 	}
 }
