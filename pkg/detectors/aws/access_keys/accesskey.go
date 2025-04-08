@@ -104,7 +104,6 @@ func (s scanner) getAWSBuilableClient() config.HTTPClient {
 func (s scanner) FromData(ctx context.Context, verify bool, data []byte) (results []detectors.Result, err error) {
 	logger := logContext.AddLogger(ctx).Logger().WithName("aws")
 	dataStr := string(data)
-	dataStr = aws.UrlEncodedReplacer.Replace(dataStr)
 
 	// Filter & deduplicate matches.
 	idMatches := make(map[string]struct{})

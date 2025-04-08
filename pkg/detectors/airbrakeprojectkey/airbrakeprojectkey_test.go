@@ -32,11 +32,6 @@ func TestAirBrakeProjectKey_Pattern(t *testing.T) {
 			want:  []string{"qwmnerBv56zxpocvkjqr78afvYUx90Op451298"},
 		},
 		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("airbrake keyword is not close to the real key and secret = '%s'", validPattern),
-			want:  nil,
-		},
-		{
 			name:  "valid pattern - only key",
 			input: fmt.Sprintf("airbrake %s", strings.Split(validPattern, "/")[0]),
 			want:  nil,

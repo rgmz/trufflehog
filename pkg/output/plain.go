@@ -38,6 +38,9 @@ func (p *PlainPrinter) Print(_ context.Context, r *detectors.ResultWithMetadata)
 		Raw:                 strings.TrimSpace(string(r.Result.Raw)),
 		DetectorDescription: r.DetectorDescription,
 	}
+	if len(r.Result.RawV2) > 0 {
+		out.Raw = strings.TrimSpace(string(r.Result.RawV2))
+	}
 
 	meta, err := structToMap(out.MetaData.Data)
 	if err != nil {
@@ -53,9 +56,9 @@ func (p *PlainPrinter) Print(_ context.Context, r *detectors.ResultWithMetadata)
 	} else {
 		printer = whitePrinter
 		boldWhitePrinter.Print("Found unverified result 🐷🔑❓\n")
-		if out.VerificationError != nil {
-			yellowPrinter.Printf("Verification issue: %s\n", out.VerificationError)
-		}
+	}
+	if out.VerificationError != nil {
+		yellowPrinter.Printf("Verification issue: %s\n", out.VerificationError)
 	}
 	if r.VerificationFromCache {
 		cyanPrinter.Print("(Verification info cached)\n")

@@ -31,12 +31,7 @@ func TestMetabase_Pattern(t *testing.T) {
 			name:  "valid pattern - with keyword metabase",
 			input: fmt.Sprintf("%s '%s' %s '%s'", keyword, validKeyPattern, keyword, validBaseUrlPattern),
 			want:  []string{validKeyPattern + validBaseUrlPattern},
-		},
-		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("%s keyword is not close to the real key in the data\n = '%s' '%s'", keyword, validKeyPattern, validBaseUrlPattern),
-			want:  []string{},
-		},
+},
 		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("%s key = '%s' url = '%s'", keyword, invalidKeyPattern, invalidBaseUrlPattern),

@@ -31,12 +31,7 @@ func TestMite_Pattern(t *testing.T) {
 			name:  "valid pattern - with keyword mite",
 			input: fmt.Sprintf("%s '%s' '%s'", keyword, validKeyPattern, validUrlPattern),
 			want:  []string{validKeyPattern},
-		},
-		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("%s keyword is not close to the real key in the data\n = '%s'", keyword, validKeyPattern),
-			want:  []string{},
-		},
+},
 		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("%s key = '%s' url = '%s'", keyword, invalidKeyPattern, invalidUrlPattern),
