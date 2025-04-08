@@ -26,6 +26,7 @@ var (
 )
 
 func TestAWS_Pattern(t *testing.T) {
+	t.Parallel()
 	d := scanner{}
 	ahoCorasickCore := ahocorasick.NewAhoCorasickCore([]detectors.Detector{d})
 

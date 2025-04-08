@@ -18,6 +18,7 @@ var (
 )
 
 func TestTravisCI_Pattern(t *testing.T) {
+	t.Parallel()
 	d := Scanner{}
 	ahoCorasickCore := ahocorasick.NewAhoCorasickCore([]detectors.Detector{d})
 	tests := []struct {
@@ -34,7 +35,7 @@ func TestTravisCI_Pattern(t *testing.T) {
 			name:  "valid pattern - ignore duplicate",
 			input: fmt.Sprintf("%s token = '%s' | '%s'", keyword, validPattern, validPattern),
 			want:  []string{validPattern},
-},
+		},
 		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("%s = '%s'", keyword, invalidPattern),

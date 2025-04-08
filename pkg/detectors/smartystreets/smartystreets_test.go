@@ -20,6 +20,7 @@ var (
 )
 
 func TestSmartyStreets_Pattern(t *testing.T) {
+	t.Parallel()
 	d := Scanner{}
 	ahoCorasickCore := ahocorasick.NewAhoCorasickCore([]detectors.Detector{d})
 	tests := []struct {

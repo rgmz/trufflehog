@@ -20,6 +20,7 @@ var (
 )
 
 func TestMetabase_Pattern(t *testing.T) {
+	t.Parallel()
 	d := Scanner{}
 	ahoCorasickCore := ahocorasick.NewAhoCorasickCore([]detectors.Detector{d})
 	tests := []struct {
@@ -31,7 +32,7 @@ func TestMetabase_Pattern(t *testing.T) {
 			name:  "valid pattern - with keyword metabase",
 			input: fmt.Sprintf("%s '%s' %s '%s'", keyword, validKeyPattern, keyword, validBaseUrlPattern),
 			want:  []string{validKeyPattern + validBaseUrlPattern},
-},
+		},
 		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("%s key = '%s' url = '%s'", keyword, invalidKeyPattern, invalidBaseUrlPattern),

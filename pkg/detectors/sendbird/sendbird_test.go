@@ -12,14 +12,15 @@ import (
 )
 
 var (
-    validKey     = "e9aeb40d34e6a7a9fb10e5876be968e344420b0c"
-    invalidKey   = "?9aeb40d34e6a7a9fb10e5876be968e344420b0c"
-    validAppId   = "FAB7BE5B-E6DD-670A-A3DC-91AF003DB677"
-    invalidAppId = "FAB7BE5B?E6DD-670A-A3DC-91AF003DB677"
-    keyword      = "sendbird"
+	validKey     = "e9aeb40d34e6a7a9fb10e5876be968e344420b0c"
+	invalidKey   = "?9aeb40d34e6a7a9fb10e5876be968e344420b0c"
+	validAppId   = "FAB7BE5B-E6DD-670A-A3DC-91AF003DB677"
+	invalidAppId = "FAB7BE5B?E6DD-670A-A3DC-91AF003DB677"
+	keyword      = "sendbird"
 )
 
 func TestSendbird_Pattern(t *testing.T) {
+	t.Parallel()
 	d := Scanner{}
 	ahoCorasickCore := ahocorasick.NewAhoCorasickCore([]detectors.Detector{d})
 	tests := []struct {

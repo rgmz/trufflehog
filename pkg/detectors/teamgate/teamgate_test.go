@@ -12,14 +12,15 @@ import (
 )
 
 var (
-    validToken   = "78fohntospcdns4n7zokz7zr134vn7ua7io7ehp1"
-    invalidToken = "78fohntospcdns4n7?okz7zr134vn7ua7io7ehp1"
-    validKey     = "AdPZhlbr8bIaIUomTizYvauT2HMNUfm6oK4Aft8JICXKvdKbHOEeRVLPycmGLi60QBksu5tPvD8X4ciX"
-    invalidKey   = "AdPZhlbr8b?aIUomTizYvauT2HMNUfm6oK4Aft8JICXKvdKbHOEeRVLPycmGLi60QBksu5tPvD8X4ciX"
-    keyword      = "teamgate"
+	validToken   = "78fohntospcdns4n7zokz7zr134vn7ua7io7ehp1"
+	invalidToken = "78fohntospcdns4n7?okz7zr134vn7ua7io7ehp1"
+	validKey     = "AdPZhlbr8bIaIUomTizYvauT2HMNUfm6oK4Aft8JICXKvdKbHOEeRVLPycmGLi60QBksu5tPvD8X4ciX"
+	invalidKey   = "AdPZhlbr8b?aIUomTizYvauT2HMNUfm6oK4Aft8JICXKvdKbHOEeRVLPycmGLi60QBksu5tPvD8X4ciX"
+	keyword      = "teamgate"
 )
 
 func TestTeamgate_Pattern(t *testing.T) {
+	t.Parallel()
 	d := Scanner{}
 	ahoCorasickCore := ahocorasick.NewAhoCorasickCore([]detectors.Detector{d})
 	tests := []struct {

@@ -20,6 +20,7 @@ var (
 )
 
 func TestMixpanel_Pattern(t *testing.T) {
+	t.Parallel()
 	d := Scanner{}
 	ahoCorasickCore := ahocorasick.NewAhoCorasickCore([]detectors.Detector{d})
 	tests := []struct {
@@ -31,7 +32,7 @@ func TestMixpanel_Pattern(t *testing.T) {
 			name:  "valid pattern - with keyword mixpanel",
 			input: fmt.Sprintf("%s %s %s", keyword, validKeyPattern, validIdPattern),
 			want:  []string{validKeyPattern},
-},
+		},
 		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("%s key = '%s' url = '%s'", keyword, invalidKeyPattern, invalidIdPattern),

@@ -12,14 +12,15 @@ import (
 )
 
 var (
-    validKey   = "MHxch0NrViQ41psiK4ypAwrUxzbKC3YeEuL1CPRedPiVouXflbdW4nKcaJ8Iidua"
-    invalidKey = "MHxch0NrViQ41psiK4ypAwrUxzbKC3Ye?uL1CPRedPiVouXflbdW4nKcaJ8Iidua"
-    validId    = "ScH0wbXrV7gBPgTZgjpNy2mtcHbelKGh"
-    invalidId  = "ScH0wbXrV7?BPgTZgjpNy2mtcHbelKGh"
-    keyword    = "typetalk"
+	validKey   = "MHxch0NrViQ41psiK4ypAwrUxzbKC3YeEuL1CPRedPiVouXflbdW4nKcaJ8Iidua"
+	invalidKey = "MHxch0NrViQ41psiK4ypAwrUxzbKC3Ye?uL1CPRedPiVouXflbdW4nKcaJ8Iidua"
+	validId    = "ScH0wbXrV7gBPgTZgjpNy2mtcHbelKGh"
+	invalidId  = "ScH0wbXrV7?BPgTZgjpNy2mtcHbelKGh"
+	keyword    = "typetalk"
 )
 
 func TestTypetalk_Pattern(t *testing.T) {
+	t.Parallel()
 	d := Scanner{}
 	ahoCorasickCore := ahocorasick.NewAhoCorasickCore([]detectors.Detector{d})
 	tests := []struct {

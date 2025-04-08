@@ -33,6 +33,7 @@ var (
 )
 
 func TestCraftMyPDF_Pattern(t *testing.T) {
+	t.Parallel()
 	d := Scanner{}
 	ahoCorasickCore := ahocorasick.NewAhoCorasickCore([]detectors.Detector{d})
 

@@ -19,6 +19,7 @@ var (
 )
 
 func TestJdbc_Pattern(t *testing.T) {
+	t.Parallel()
 	d := Scanner{}
 	ahoCorasickCore := ahocorasick.NewAhoCorasickCore([]detectors.Detector{d})
 	tests := []struct {
@@ -82,6 +83,7 @@ func TestJdbc_Pattern(t *testing.T) {
 }
 
 func TestJdbc_FromDataWithIgnorePattern(t *testing.T) {
+	t.Parallel()
 	type args struct {
 		ctx    context.Context
 		data   []byte

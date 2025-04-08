@@ -27,6 +27,7 @@ var (
 )
 
 func TestAWSSessionKey_Pattern(t *testing.T) {
+	t.Parallel()
 	d := New()
 	ahoCorasickCore := ahocorasick.NewAhoCorasickCore([]detectors.Detector{d})
 
