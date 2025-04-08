@@ -44,12 +44,12 @@ type IDNameUUID struct {
 }
 
 type KeyValue struct {
-	Key          string      `json:"key"`
-	Value        interface{} `json:"value"`
-	Enabled      bool        `json:"enabled,omitempty"`
-	Type         string      `json:"type,omitempty"`
-	SessionValue string      `json:"sessionValue,omitempty"`
-	Id           string      `json:"id,omitempty"`
+	Key          string `json:"key"`
+	Value        any    `json:"value"`
+	Enabled      bool   `json:"enabled,omitempty"`
+	Type         string `json:"type,omitempty"`
+	SessionValue string `json:"sessionValue,omitempty"`
+	Id           string `json:"id,omitempty"`
 }
 
 type VariableData struct {
@@ -136,12 +136,14 @@ type Script struct {
 }
 
 type Request struct {
-	Auth        Auth       `json:"auth,omitempty"`
-	Method      string     `json:"method"`
-	Header      []KeyValue `json:"header,omitempty"`
-	Body        Body       `json:"body,omitempty"` //Need to update with additional options
-	URL         URL        `json:"url"`
-	Description string     `json:"description,omitempty"`
+	Auth           Auth            `json:"auth,omitempty"`
+	Method         string          `json:"method"`
+	HeaderRaw      json.RawMessage `json:"header,omitempty"`
+	HeaderKeyValue []KeyValue
+	HeaderString   []string
+	Body           Body   `json:"body,omitempty"` //Need to update with additional options
+	URL            URL    `json:"url"`
+	Description    string `json:"description,omitempty"`
 }
 
 type Body struct {
@@ -171,12 +173,14 @@ type URL struct {
 }
 
 type Response struct {
-	ID              string     `json:"id"`
-	Name            string     `json:"name,omitempty"`
-	OriginalRequest Request    `json:"originalRequest,omitempty"`
-	Header          []KeyValue `json:"header,omitempty"`
-	Body            string     `json:"body,omitempty"`
-	UID             string     `json:"uid,omitempty"`
+	ID              string          `json:"id"`
+	Name            string          `json:"name,omitempty"`
+	OriginalRequest Request         `json:"originalRequest,omitempty"`
+	HeaderRaw       json.RawMessage `json:"header,omitempty"`
+	HeaderKeyValue  []KeyValue
+	HeaderString    []string
+	Body            string `json:"body,omitempty"`
+	UID             string `json:"uid,omitempty"`
 }
 
 // A Client manages communication with the Postman API.
@@ -242,7 +246,7 @@ func checkResponseStatus(r *http.Response) error {
 	return fmt.Errorf("postman Request failed with status code: %d", r.StatusCode)
 }
 
-func (c *Client) getPostmanReq(url string, headers map[string]string) (*http.Response, error) {
+func (c *Client) getPostmanReq(ctx context.Context, url string, headers map[string]string) (*http.Response, error) {
 	req, err := c.NewRequest(url, headers)
 	if err != nil {
 		return nil, err
@@ -252,6 +256,8 @@ func (c *Client) getPostmanReq(url string, headers map[string]string) (*http.Res
 	if err != nil {
 		return nil, err
 	}
+
+	ctx.Logger().V(4).Info("postman api response headers are available", "response_header", resp.Header)
 
 	if err := checkResponseStatus(resp); err != nil {
 		return nil, err
@@ -267,7 +273,10 @@ func (c *Client) EnumerateWorkspaces(ctx context.Context) ([]Workspace, error) {
 		Workspaces []Workspace `json:"workspaces"`
 	}{}
 
-	r, err := c.getPostmanReq("https://api.getpostman.com/workspaces", nil)
+	if err := c.WorkspaceAndCollectionRateLimiter.Wait(ctx); err != nil {
+		return nil, fmt.Errorf("could not wait for rate limiter during workspaces enumeration getting: %w", err)
+	}
+	r, err := c.getPostmanReq(ctx, "https://api.getpostman.com/workspaces", nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not get workspaces during enumeration: %w", err)
 	}
@@ -306,7 +315,7 @@ func (c *Client) GetWorkspace(ctx context.Context, workspaceUUID string) (Worksp
 	if err := c.WorkspaceAndCollectionRateLimiter.Wait(ctx); err != nil {
 		return Workspace{}, fmt.Errorf("could not wait for rate limiter during workspace getting: %w", err)
 	}
-	r, err := c.getPostmanReq(url, nil)
+	r, err := c.getPostmanReq(ctx, url, nil)
 	if err != nil {
 		return Workspace{}, fmt.Errorf("could not get workspace (%s): %w", workspaceUUID, err)
 	}
@@ -334,7 +343,7 @@ func (c *Client) GetEnvironmentVariables(ctx context.Context, environment_uuid s
 	if err := c.GeneralRateLimiter.Wait(ctx); err != nil {
 		return VariableData{}, fmt.Errorf("could not wait for rate limiter during environment variable getting: %w", err)
 	}
-	r, err := c.getPostmanReq(url, nil)
+	r, err := c.getPostmanReq(ctx, url, nil)
 	if err != nil {
 		return VariableData{}, fmt.Errorf("could not get env variables for environment (%s): %w", environment_uuid, err)
 	}
@@ -361,7 +370,7 @@ func (c *Client) GetCollection(ctx context.Context, collection_uuid string) (Col
 	if err := c.WorkspaceAndCollectionRateLimiter.Wait(ctx); err != nil {
 		return Collection{}, fmt.Errorf("could not wait for rate limiter during collection getting: %w", err)
 	}
-	r, err := c.getPostmanReq(url, nil)
+	r, err := c.getPostmanReq(ctx, url, nil)
 	if err != nil {
 		return Collection{}, fmt.Errorf("could not get collection (%s): %w", collection_uuid, err)
 	}
@@ -373,6 +382,31 @@ func (c *Client) GetCollection(ctx context.Context, collection_uuid string) (Col
 	r.Body.Close()
 	if err := json.Unmarshal([]byte(body), &obj); err != nil {
 		return Collection{}, fmt.Errorf("could not unmarshal JSON for collection (%s): %w", collection_uuid, err)
+	}
+
+	// Loop used to deal with seeing whether a request/response header is a string or a key value pair
+	for i := range obj.Collection.Items {
+		if obj.Collection.Items[i].Request.HeaderRaw != nil {
+			if err := json.Unmarshal(obj.Collection.Items[i].Request.HeaderRaw, &obj.Collection.Items[i].Request.HeaderKeyValue); err == nil {
+			} else if err := json.Unmarshal(obj.Collection.Items[i].Request.HeaderRaw, &obj.Collection.Items[i].Request.HeaderString); err == nil {
+			} else {
+				return Collection{}, fmt.Errorf("could not unmarshal request header JSON for collection (%s): %w", collection_uuid, err)
+			}
+		}
+
+		for j := range obj.Collection.Items[i].Response {
+			if err := json.Unmarshal(obj.Collection.Items[i].Response[j].OriginalRequest.HeaderRaw, &obj.Collection.Items[i].Response[j].OriginalRequest.HeaderKeyValue); err == nil {
+			} else if err := json.Unmarshal(obj.Collection.Items[i].Response[j].OriginalRequest.HeaderRaw, &obj.Collection.Items[i].Response[j].OriginalRequest.HeaderString); err == nil {
+			} else {
+				return Collection{}, fmt.Errorf("could not unmarshal original request header in response JSON for collection (%s): %w", collection_uuid, err)
+			}
+
+			if err := json.Unmarshal(obj.Collection.Items[i].Response[j].HeaderRaw, &obj.Collection.Items[i].Response[j].HeaderKeyValue); err == nil {
+			} else if err := json.Unmarshal(obj.Collection.Items[i].Response[j].HeaderRaw, &obj.Collection.Items[i].Response[j].HeaderString); err == nil {
+			} else {
+				return Collection{}, fmt.Errorf("could not unmarshal response header JSON for collection (%s): %w", collection_uuid, err)
+			}
+		}
 	}
 
 	return obj.Collection, nil
