@@ -1030,7 +1030,8 @@ enum DetectorType {
   StoryblokPersonalAccessToken = 1016;
   SentryOrgToken = 1017;
   AzureApiManagementRepositoryKey = 1018;
-  ElasticCloud = 1019;
+  AzureAPIManagementSubscriptionKey = 1019;
+  ElasticCloud = 1020;
 }
 
 message Result {

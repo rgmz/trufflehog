@@ -1,8 +1,7 @@
-package jiratoken
+package azureapimanagementsubscriptionkey
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -11,39 +10,30 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/engine/ahocorasick"
 )
 
-var (
-	validTokenPattern    = "9nsCADa7812Z7VoIsYJ0K4rFWLBfk=1rhOsLAW"
-	invalidTokenPattern  = "9nsCA?a7812Z7VoI%YJ0K4rFWLBfk91rhOsLAW"
-	validDomainPattern   = "hereisavalidsubdomain.heresalongdomain.com"
-	validDomainPattern2  = "jira.hereisavalidsubdomain.heresalongdomain.com"
-	invalidDomainPattern = "?y4r3fs1ewqec12v1e3tl.5Hcsrcehic89saXd.ro@"
-	validEmailPattern    = "xfKF_BZq7@grum.com"
-	invalidEmailPattern  = "xfKF_BZq7/grum.com"
-	keyword              = "jira"
-)
-
-func TestJiraToken_Pattern(t *testing.T) {
+func TestAzureAPIManagementSubscriptionKey_Pattern(t *testing.T) {
 	d := Scanner{}
 	ahoCorasickCore := ahocorasick.NewAhoCorasickCore([]detectors.Detector{d})
+
 	tests := []struct {
 		name  string
 		input string
 		want  []string
 	}{
 		{
-			name:  "valid pattern - with keyword jira",
-			input: fmt.Sprintf("%s %s          \n%s %s\n%s %s", keyword, validTokenPattern, keyword, validDomainPattern, keyword, validEmailPattern),
-			want:  []string{validEmailPattern + ":" + validTokenPattern + ":" + validDomainPattern},
+			name: "valid pattern",
+			input: `
+				AZURE_API_MANAGEMENT_GATEWAY_URL=https://trufflesecuritytest.azure-api.net
+				AZURE_API_MANAGEMENT_SUBSCRIPTION_KEY=2c69j0dc327c4929b74d3a832a04266b
+			`,
+			want: []string{"https://trufflesecuritytest.azure-api.net:2c69j0dc327c4929b74d3a832a04266b"},
 		},
 		{
-			name:  "valid pattern - with multiple subdomains",
-			input: fmt.Sprintf("%s %s          \n%s %s\n%s %s", keyword, validTokenPattern, keyword, validDomainPattern2, keyword, validEmailPattern),
-			want:  []string{validEmailPattern + ":" + validTokenPattern + ":" + validDomainPattern2},
-		},
-		{
-			name:  "invalid pattern",
-			input: fmt.Sprintf("%s key = '%s' domain = '%s' email = '%s'", keyword, invalidTokenPattern, invalidDomainPattern, invalidEmailPattern),
-			want:  []string{},
+			name: "invalid pattern",
+			input: `
+				AZURE_API_MANAGEMENT_GATEWAY_URL=https://trufflesecuritytest.azure-api.net
+				AZURE_API_MANAGEMENT_SUBSCRIPTION_KEY=2c69j2dc3f7c4929b74d3a832a042
+			`,
+			want: nil,
 		},
 	}
 

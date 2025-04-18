@@ -28,6 +28,7 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/notion"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/openai"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/opsgenie"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/plaid"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/planetscale"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/postgres"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/postman"
@@ -153,5 +154,8 @@ func Run(cmd string) {
 		launchdarkly.AnalyzeAndPrintPermissions(cfg, key)
 	case "figma":
 		figma.AnalyzeAndPrintPermissions(cfg, key)
+	case "plaid":
+		parts := strings.SplitN(key, ":", 2)
+		plaid.AnalyzeAndPrintPermissions(cfg, parts[0], parts[1], parts[3])
 	}
 }
