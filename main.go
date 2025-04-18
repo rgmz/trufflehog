@@ -19,7 +19,6 @@ import (
 	"github.com/felixge/fgprof"
 	"github.com/go-logr/logr"
 	"github.com/jpillora/overseer"
-	"github.com/mattn/go-isatty"
 	"go.uber.org/automaxprocs/maxprocs"
 
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer"
@@ -36,7 +35,6 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/log"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/output"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/sources"
-	"github.com/trufflesecurity/trufflehog/v3/pkg/tui"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/updater"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/verificationcache"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/version"
@@ -59,7 +57,6 @@ var (
 	onlyVerified        = cli.Flag("only-verified", "Only output verified results.").Hidden().Bool()
 	results             = cli.Flag("results", "Specifies which type(s) of results to output: verified, unknown, unverified, filtered_unverified. Defaults to verified,unverified,unknown.").String()
 
-	allowVerificationOverlap   = cli.Flag("allow-verification-overlap", "Allow verification of similar credentials across detectors").Bool()
 	filterUnverified           = cli.Flag("filter-unverified", "Only output first unverified result per chunk per detector if there are more than one results.").Bool()
 	filterEntropy              = cli.Flag("filter-entropy", "Filter unverified results with Shannon entropy. Start with 3.0.").Float64()
 	scanEntireChunk            = cli.Flag("scan-entire-chunk", "Scan the entire chunk for secrets.").Hidden().Default("false").Bool()
@@ -250,7 +247,6 @@ var (
 	huggingfaceIncludePrs         = huggingfaceScan.Flag("include-prs", "Include pull requests in scan.").Bool()
 
 	analyzeCmd = analyzer.Command(cli)
-	usingTUI   = false
 )
 
 func init() {
@@ -268,33 +264,6 @@ func init() {
 
 	// Support -h for help
 	cli.HelpFlag.Short('h')
-
-	// Check if the TUI environment variable is set.
-	if ok, err := strconv.ParseBool(os.Getenv("TUI_PARENT")); err == nil {
-		usingTUI = ok
-	}
-
-	if isatty.IsTerminal(os.Stdout.Fd()) && (len(os.Args) <= 1 || os.Args[1] == analyzeCmd.FullCommand()) {
-		args := tui.Run(os.Args[1:])
-		if len(args) == 0 {
-			os.Exit(0)
-		}
-
-		binary, err := exec.LookPath("sh")
-		if err == nil {
-			// On success, this call will never return. On failure, fallthrough
-			// to overwriting os.Args.
-			cmd := strings.Join(append(os.Args[:1], args...), " ")
-			_ = syscall.Exec(binary, []string{"sh", "-c", cmd}, append(os.Environ(), "TUI_PARENT=true"))
-		}
-
-		// Overwrite the Args slice so overseer works properly.
-		os.Args = os.Args[:1]
-		os.Args = append(os.Args, args...)
-
-		usingTUI = true
-	}
-
 	cmd = kingpin.MustParse(cli.Parse(os.Args[1:]))
 
 	// Configure logging.
@@ -348,7 +317,7 @@ func main() {
 
 	if !*noUpdate {
 		topLevelCmd, _, _ := strings.Cut(cmd, " ")
-		updateCfg.Fetcher = updater.Fetcher(topLevelCmd, usingTUI)
+		updateCfg.Fetcher = updater.Fetcher(topLevelCmd)
 	}
 	if version.BuildVersion == "dev" {
 		updateCfg.Fetcher = nil
@@ -518,7 +487,6 @@ func run(state overseer.State) {
 		Dispatcher:               engine.NewPrinterDispatcher(printer),
 		FilterUnverified:         *filterUnverified,
 		FilterEntropy:            *filterEntropy,
-		VerificationOverlap:      *allowVerificationOverlap,
 		Results:                  parsedResults,
 		PrintAvgDetectorTime:     *printAvgDetectorTime,
 		ShouldScanEntireChunk:    *scanEntireChunk,
@@ -536,39 +504,45 @@ func run(state overseer.State) {
 		return
 	}
 
-	metrics, err := runSingleScan(ctx, cmd, engConf)
-	if err != nil {
-		logFatal(err, "error running scan")
-	}
+	topLevelSubCommand, _, _ := strings.Cut(cmd, " ")
+	switch topLevelSubCommand {
+	case analyzeCmd.FullCommand():
+		analyzer.Run(cmd)
+	default:
+		metrics, err := runSingleScan(ctx, cmd, engConf)
+		if err != nil {
+			logFatal(err, "error running scan")
+		}
 
-	verificationCacheMetricsSnapshot := struct {
-		Hits                    int32
-		Misses                  int32
-		HitsWasted              int32
-		AttemptsSaved           int32
-		VerificationTimeSpentMS int64
-	}{
-		Hits:                    verificationCacheMetrics.ResultCacheHits.Load(),
-		Misses:                  verificationCacheMetrics.ResultCacheMisses.Load(),
-		HitsWasted:              verificationCacheMetrics.ResultCacheHitsWasted.Load(),
-		AttemptsSaved:           verificationCacheMetrics.CredentialVerificationsSaved.Load(),
-		VerificationTimeSpentMS: verificationCacheMetrics.FromDataVerifyTimeSpentMS.Load(),
-	}
+		verificationCacheMetricsSnapshot := struct {
+			Hits                    int32
+			Misses                  int32
+			HitsWasted              int32
+			AttemptsSaved           int32
+			VerificationTimeSpentMS int64
+		}{
+			Hits:                    verificationCacheMetrics.ResultCacheHits.Load(),
+			Misses:                  verificationCacheMetrics.ResultCacheMisses.Load(),
+			HitsWasted:              verificationCacheMetrics.ResultCacheHitsWasted.Load(),
+			AttemptsSaved:           verificationCacheMetrics.CredentialVerificationsSaved.Load(),
+			VerificationTimeSpentMS: verificationCacheMetrics.FromDataVerifyTimeSpentMS.Load(),
+		}
 
-	// Print results.
-	logger.Info("finished scanning",
-		"chunks", metrics.ChunksScanned,
-		"bytes", metrics.BytesScanned,
-		"verified_secrets", metrics.VerifiedSecretsFound,
-		"unverified_secrets", metrics.UnverifiedSecretsFound,
-		"scan_duration", metrics.ScanDuration.String(),
-		"trufflehog_version", version.BuildVersion,
-		"verification_caching", verificationCacheMetricsSnapshot,
-	)
+		// Print results.
+		logger.Info("finished scanning",
+			"chunks", metrics.ChunksScanned,
+			"bytes", metrics.BytesScanned,
+			"verified_secrets", metrics.VerifiedSecretsFound,
+			"unverified_secrets", metrics.UnverifiedSecretsFound,
+			"scan_duration", metrics.ScanDuration.String(),
+			"trufflehog_version", version.BuildVersion,
+			"verification_caching", verificationCacheMetricsSnapshot,
+		)
 
-	if metrics.hasFoundResults && *fail {
-		logger.V(2).Info("exiting with code 183 because results were found")
-		os.Exit(183)
+		if metrics.hasFoundResults && *fail {
+			logger.V(2).Info("exiting with code 183 because results were found")
+			os.Exit(183)
+		}
 	}
 }
 

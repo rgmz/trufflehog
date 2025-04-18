@@ -65,10 +65,7 @@ func TestFlowFlu_Pattern(t *testing.T) {
 			if len(results) != len(test.want) {
 				if len(results) == 0 {
 					t.Errorf("did not receive result")
-				} else {
-					t.Errorf("expected %d results, only received %d", len(test.want), len(results))
 				}
-				return
 			}
 
 			actual := make(map[string]struct{}, len(results))

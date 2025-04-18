@@ -1,6 +1,7 @@
 package decoders
 
 import (
+	"github.com/trufflesecurity/trufflehog/v3/pkg/context"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/pb/detectorspb"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/sources"
 )
@@ -9,9 +10,11 @@ func DefaultDecoders() []Decoder {
 	return []Decoder{
 		// UTF8 must be first for duplicate detection
 		&UTF8{},
+		&EscapedUnicode{},
+		&HtmlEntity{},
+		&Percent{},
 		&Base64{},
 		&UTF16{},
-		&EscapedUnicode{},
 	}
 }
 
@@ -23,7 +26,7 @@ type DecodableChunk struct {
 }
 
 type Decoder interface {
-	FromChunk(chunk *sources.Chunk) *DecodableChunk
+	FromChunk(ctx context.Context, chunk *sources.Chunk) *DecodableChunk
 	Type() detectorspb.DecoderType
 }
 
@@ -31,13 +34,14 @@ type Decoder interface {
 // This one attempts to uncover any panics during decoding.
 func Fuzz(data []byte) int {
 	decoded := false
+	ctx := context.Background()
 	for i, decoder := range DefaultDecoders() {
 		// Skip the first decoder (plain), because it will always decode and give
 		// priority to the input (return 1).
 		if i == 0 {
 			continue
 		}
-		chunk := decoder.FromChunk(&sources.Chunk{Data: data})
+		chunk := decoder.FromChunk(ctx, &sources.Chunk{Data: data})
 		if chunk != nil {
 			decoded = true
 		}
