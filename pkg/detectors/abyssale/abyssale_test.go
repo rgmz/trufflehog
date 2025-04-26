@@ -1,4 +1,4 @@
-package abbysale
+package abyssale
 
 import (
 	"context"
@@ -16,7 +16,7 @@ var (
 	invalidPattern = "123abcDEF456ghiJKL789mnoPQR012stuVWX"
 )
 
-func TestAbbySale_Pattern(t *testing.T) {
+func TestAbyssale_Pattern(t *testing.T) {
 	d := Scanner{}
 	ahoCorasickCore := ahocorasick.NewAhoCorasickCore([]detectors.Detector{d})
 
@@ -27,12 +27,12 @@ func TestAbbySale_Pattern(t *testing.T) {
 	}{
 		{
 			name:  "valid pattern",
-			input: fmt.Sprintf("abbysale token = '%s'", validPattern),
+			input: fmt.Sprintf("abyssale token = '%s'", validPattern),
 			want:  []string{validPattern},
 		},
 		{
 			name:  "invalid pattern",
-			input: fmt.Sprintf("abbysale = '%s'", invalidPattern),
+			input: fmt.Sprintf("abyssale = '%s'", invalidPattern),
 			want:  nil,
 		},
 	}
