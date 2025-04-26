@@ -48,7 +48,7 @@ func (s Scanner) MaxSecretSize() int64 {
 }
 
 var (
-	keyPat          = regexp.MustCompile(`{(?:\s|\\+[nrt])*\\*"auths\\*"(?:\s|\\+t)*:(?:\s|\\+t)*{(?:\s|\\+[nrt])*\\*"(?i:https?:\/\/)?[a-z0-9\-.:\/]+\\*"(?:\s|\\+t)*:(?:\s|\\+t)*{(?:(?:\s|\\+[nrt])*\\*"(?i:auth|email|username|password)\\*"\s*:\s*\\*".*\\*"\s*,?)+?(?:\s|\\+[nrt])*}(?:\s|\\+[nrt])*}(?:\s|\\+[nrt])*}`)
+	keyPat          = regexp.MustCompile(`{(?:\s|\\+[nrt])*\\*"auths\\*"(?:\s|\\+t)*:(?:\s|\\+t)*({(?:\s|\\+[nrt])*\\*"(?i:https?:\/\/)?[a-z0-9\-.:\/]+\\*"(?:\s|\\+t)*:(?:\s|\\+t)*{(?:(?:\s|\\+[nrt])*\\*"(?i:auth|email|username|password)\\*"\s*:\s*\\*".*\\*"\s*,?)+?(?:\s|\\+[nrt])*}(?:\s|\\+[nrt])*})`)
 	escapedReplacer = strings.NewReplacer(
 		`\n`, "",
 		`\r`, "",
@@ -59,7 +59,6 @@ var (
 
 	// Common false-positives used in examples.
 	exampleRegistries = map[string]struct{}{
-		"https://index.docker.io/v1/":       {}, // https://github.com/moby/moby/blob/34679e568a22b4f35ff8460f3b5b7bf7089df818/cliconfig/config_test.go#L259
 		"registry.hostname.com":             {}, // https://github.com/openshift/machine-config-operator/blob/82011335dbdd3d4c869b959d6048a3fba7742e47/pkg/controller/build/helpers_test.go#L47
 		"registry.example.com:5000":         {}, // https://github.com/openshift/cluster-baremetal-operator/blob/f908020b1d46667056f21cf1d79e032c535a41fc/provisioning/baremetal_secrets_test.go#L53
 		"registry2.example.com:5000":        {},
@@ -75,7 +74,7 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 
 	uniqueMatches := make(map[string]struct{})
 	for _, match := range keyPat.FindAllStringSubmatch(dataStr, -1) {
-		uniqueMatches[match[0]] = struct{}{}
+		uniqueMatches[match[1]] = struct{}{}
 	}
 
 	for match := range uniqueMatches {
@@ -85,15 +84,15 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 
 		// Unmarshal the config string.
 		// Doing byte->string->byte probably isn't the most efficient.
-		var auths dockerAuths
+		var auths map[string]dockerAuth
 		if err := json.NewDecoder(strings.NewReader(match)).Decode(&auths); err != nil {
 			logger.Error(err, "Could not parse Docker auth JSON")
 			return results, err
-		} else if len(auths.Auths) == 0 {
+		} else if len(auths) == 0 {
 			continue
 		}
 
-		for registry, auth := range auths.Auths {
+		for registry, auth := range auths {
 			// `docker.io` is a special case, Docker is hard-coded to rewrite it as `index.docker.io`.
 			// https://github.com/moby/moby/blob/145a73a36c171b34c196ad780e699b154ddf47b5/registry/config_test.go#L329
 			if strings.EqualFold(registry, "docker.io") {
@@ -139,16 +138,19 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 
 func verifyMatch(ctx logContext.Context, client *http.Client, registry string, username string, basicAuth string) (bool, error) {
 	// Build the registry URL path.
-	var registryUrl string
-	registry, _ = strings.CutSuffix(registry, "/")
-	if strings.HasPrefix(registry, "http://") || strings.HasPrefix(registry, "https://") {
-		registryUrl = registry + "/v2/"
-	} else {
-		registryUrl = "https://" + registry + "/v2/"
+	if !(strings.HasPrefix(registry, "http://") || strings.HasPrefix(registry, "https://")) {
+		registry = "https://" + registry
 	}
 
+	u, err := url.Parse(registry)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse registry URL: %w", err)
+	}
+	u.Path = "/v2/"
+	registry = u.String()
+
 	// Build the request.
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, registryUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, registry, nil)
 	if err != nil {
 		return false, nil
 	}
@@ -233,10 +235,6 @@ func verifyMatch(ctx logContext.Context, client *http.Client, registry string, u
 		err = fmt.Errorf("unexpected HTTP response status %d for '%s'", res.StatusCode, req.URL.String())
 		return false, err
 	}
-}
-
-type dockerAuths struct {
-	Auths map[string]dockerAuth `json:"auths"`
 }
 
 type dockerAuth struct {
