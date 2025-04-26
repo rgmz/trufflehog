@@ -36,8 +36,7 @@ var (
 		# - The above credentials should only be used in a secure environment.
 	`
 	secrets = []string{
-		"rRwOdIJpY90QrIzOXO95d3hlSzRk5Z9a:dckr_pat_dlndn9l2JLhWvbdyP3blEZw_j7d",
-		"docker-test@dockerhub.com:dckr_pat_dlndn9l2JLhWvbdyP3blEZw_j7d",
+		"dckr_pat_dlndn9l2JLhWvbdyP3blEZw_j7d",
 	}
 )
 
@@ -54,6 +53,12 @@ func TestDockerHub_Pattern(t *testing.T) {
 			name:  "valid pattern",
 			input: validPattern,
 			want:  secrets,
+		},
+		{
+			name: "low entropy",
+			input: `        registry_url: https://index.docker.io/v1/
+        username: rjames
+        password: dckr_pat_xxxxxxxxxxxxxxxxxxxxxxxxxxx`,
 		},
 	}
 
