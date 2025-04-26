@@ -249,7 +249,7 @@ func TestSource_Chunks_Integration(t *testing.T) {
 			chunksCh := make(chan *sources.Chunk, 1)
 			go func() {
 				defer close(chunksCh)
-				repoPath, repo, err := CloneRepoUsingUnauthenticated(ctx, tt.repoURL)
+				repoPath, repo, err := CloneRepoUsingUnauthenticated(ctx, tt.repoURL, "")
 				if err != nil {
 					panic(err)
 				}
