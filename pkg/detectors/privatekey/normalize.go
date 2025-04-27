@@ -105,7 +105,7 @@ var (
 	// contentPat       = regexp.MustCompile(`(?:\\r|\\n|[ \t\r\n]){0,5}.*?([a-zA-Z0-9/+]{64,}).*?(?:\\r|\\n|[ \t\r\n]){1,5}`)
 	contentPat = regexp.MustCompile(`(?:\A|[ \t\r\n"'\x60]|\\+r|\\+n)?([a-zA-Z0-9/+]{64,})(?:[ \t\r\n"'\x60]|\\+r|\\+n)`)
 	// contentFooterPat = regexp.MustCompile(`(?:\\r|\\n|[ \t\r\n]){0,5}.*?((?:[a-zA-Z0-9/+]{4})+|(?:|[a-zA-Z0-9/+]{4})*(?:[a-zA-Z0-9/+]{3}=|[a-zA-Z0-9/+]{2}==|[a-zA-Z0-9/+]===?)).*?(?:\\r|\\n|[ \t\r\n]){1,5}`)
-	contentFooterPat = regexp.MustCompile(`(?:\A|[ \t\r\n"'\x60]|\\+r|\\+n)((?:[a-zA-Z0-9/+]{4})*[a-zA-Z0-9][a-zA-Z0-9/+]{0,3}={0,3})(?:[ \t\r\n"'\x60]|\\+r|\\+n|\z)`)
+	contentFooterPat = regexp.MustCompile(`(?:\A|[ \t\r\n"'\x60]|\\+r|\\+n)((?:[a-zA-Z0-9/+]{4})*[a-zA-Z0-9][a-zA-Z0-9/+]+={0,3})(?:[ \t\r\n"'\x60]|\\+r|\\+n|\z)`)
 	footerPat        = regexp.MustCompile(`-----[ \t]{0,5}END[ \w-]{0,100}PRIVATE KEY(?: BLOCK)??[ \t]{0,5}-----$`)
 )
 
