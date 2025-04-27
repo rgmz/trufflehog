@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	gogit "github.com/go-git/go-git/v5"
+
 	"github.com/trufflesecurity/trufflehog/v3/pkg/context"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/pb/source_metadatapb"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/pb/sourcespb"
@@ -56,12 +57,12 @@ func (s *Source) cloneRepo(
 
 	switch s.conn.GetCredential().(type) {
 	case *sourcespb.Huggingface_Unauthenticated:
-		path, repo, err = git.CloneRepoUsingUnauthenticated(ctx, repoURL)
+		path, repo, err = git.CloneRepoUsingUnauthenticated(ctx, repoURL, "")
 		if err != nil {
 			return "", nil, err
 		}
 	case *sourcespb.Huggingface_Token:
-		path, repo, err = git.CloneRepoUsingToken(ctx, s.huggingfaceToken, repoURL, "")
+		path, repo, err = git.CloneRepoUsingToken(ctx, s.huggingfaceToken, repoURL, "", "")
 		if err != nil {
 			return "", nil, err
 		}

@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 
-	gogit "github.com/go-git/go-git/v5"
 	"github.com/google/go-github/v67/github"
 
 	"github.com/trufflesecurity/trufflehog/v3/pkg/context"
@@ -49,10 +48,6 @@ type repoInfo struct {
 	hasWiki    bool // the repo is _likely_ to have a wiki (see the comment on wikiIsReachable func).
 	size       int
 	visibility source_metadatapb.Visibility
-}
-
-func (s *Source) cloneRepo(ctx context.Context, repoURL string) (string, *gogit.Repository, error) {
-	return s.connector.Clone(ctx, repoURL)
 }
 
 type repoListOptions interface {

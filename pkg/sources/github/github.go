@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"regexp"
 	"sort"
 	"strings"
@@ -16,7 +17,6 @@ import (
 
 	"github.com/gobwas/glob"
 	"github.com/google/go-github/v67/github"
-	"github.com/trufflesecurity/trufflehog/v3/pkg/log"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -27,6 +27,7 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/context"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/giturl"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/handlers"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/log"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/pb/source_metadatapb"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/pb/sourcespb"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/sanitizer"
@@ -719,20 +720,32 @@ func (s *Source) scanRepo(ctx context.Context, repoURL string, reporter sources.
 }
 
 func (s *Source) cloneAndScanRepo(ctx context.Context, repoURL string, repoInfo repoInfo, reporter sources.ChunkReporter) (time.Duration, error) {
-	var duration time.Duration
+	var (
+		duration  time.Duration
+		customDir = s.conn.GetCloneDirectory()
+	)
+	if len(s.repoInfoCache.cache) > 1 {
+		if strings.HasSuffix(customDir, "/") {
+			customDir = path.Join(customDir, repoInfo.owner, repoInfo.name)
+		} else {
+			customDir = path.Join(customDir, repoInfo.name)
+		}
+	}
 
 	ctx.Logger().V(2).Info("attempting to clone repo")
-	path, repo, err := s.cloneRepo(ctx, repoURL)
+	dir, repo, err := s.connector.Clone(ctx, repoURL, customDir)
 	if err != nil {
 		return duration, err
 	}
-	defer os.RemoveAll(path)
+	if customDir == "" {
+		defer os.RemoveAll(dir)
+	}
 
 	// TODO: Can this be set once or does it need to be set on every iteration? Is |s.scanOptions| set every clone?
 	s.setScanOptions(s.conn.Base, s.conn.Head)
 
 	start := time.Now()
-	if err = s.git.ScanRepo(ctx, repo, path, s.scanOptions, reporter); err != nil {
+	if err = s.git.ScanRepo(ctx, repo, dir, s.scanOptions, reporter); err != nil {
 		return duration, fmt.Errorf("error scanning repo %s: %w", repoURL, err)
 	}
 	duration = time.Since(start)

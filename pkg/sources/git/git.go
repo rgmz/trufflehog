@@ -276,15 +276,15 @@ func (s *Source) scanRepo(ctx context.Context, repoURI string, reporter sources.
 		cloneFunc = func() (string, *git.Repository, error) {
 			user := cred.BasicAuth.Username
 			token := cred.BasicAuth.Password
-			return CloneRepoUsingToken(ctx, token, repoURI, user)
+			return CloneRepoUsingToken(ctx, token, repoURI, "", user)
 		}
 	case *sourcespb.Git_Unauthenticated:
 		cloneFunc = func() (string, *git.Repository, error) {
-			return CloneRepoUsingUnauthenticated(ctx, repoURI)
+			return CloneRepoUsingUnauthenticated(ctx, repoURI, "")
 		}
 	case *sourcespb.Git_SshAuth:
 		cloneFunc = func() (string, *git.Repository, error) {
-			return CloneRepoUsingSSH(ctx, repoURI)
+			return CloneRepoUsingSSH(ctx, repoURI, "")
 		}
 	default:
 		return errors.New("invalid connection type for git source")
@@ -388,14 +388,24 @@ type cloneParams struct {
 // infrastructure, ensuring that any encountered errors trigger a cleanup of resources.
 // The core cloning logic is delegated to a nested function, which returns errors to the
 // outer function for centralized error handling and cleanup.
-func CloneRepo(ctx context.Context, userInfo *url.Userinfo, gitURL string, args ...string) (string, *git.Repository, error) {
-	clonePath, err := cleantemp.MkdirTemp()
-	if err != nil {
-		return "", nil, err
+func CloneRepo(ctx context.Context, userInfo *url.Userinfo, gitURL string, dir string, args ...string) (string, *git.Repository, error) {
+	var (
+		isDefaultDir = dir == ""
+		clonePath    = dir
+		err          error
+	)
+	if isDefaultDir {
+		if clonePath, err = cleantemp.MkdirTemp(); err != nil {
+			return "", nil, err
+		}
+	} else {
+		if err = os.MkdirAll(dir, 0755); err != nil {
+			return "", nil, err
+		}
 	}
 
 	repo, err := executeClone(ctx, cloneParams{userInfo, gitURL, args, clonePath})
-	if err != nil {
+	if err != nil && isDefaultDir {
 		// DO NOT FORGET TO CLEAN UP THE CLONE PATH HERE!!
 		// If we don't, we'll end up with a bunch of orphaned directories in the temp dir.
 		CleanOnError(&err, clonePath)
@@ -451,14 +461,18 @@ func executeClone(ctx context.Context, params cloneParams) (*git.Repository, err
 	}
 
 	if err != nil {
-		err = fmt.Errorf("error executing git clone: %w, %s", err, output)
+		if strings.HasPrefix(output, "fatal:") {
+			err = errors.New(output)
+		} else {
+			err = fmt.Errorf("%w, %s", err, output)
+		}
 	}
-	logger.V(3).Info("git subcommand finished", "output", output)
+	logger.V(3).Info("git subcommand finished", "output", output, "err", err)
 
 	if cloneCmd.ProcessState == nil {
 		return nil, fmt.Errorf("clone command exited with no output")
 	} else if cloneCmd.ProcessState.ExitCode() != 0 {
-		logger.V(1).Info("git clone failed", "error", err)
+		logger.Error(err, "git clone failed")
 		return nil, fmt.Errorf("could not clone repo: %s, %w", safeURL, err)
 	}
 
@@ -499,23 +513,23 @@ func PingRepoUsingToken(ctx context.Context, token, gitUrl, user string) error {
 }
 
 // CloneRepoUsingToken clones a repo using a provided token.
-func CloneRepoUsingToken(ctx context.Context, token, gitUrl, user string, args ...string) (string, *git.Repository, error) {
+func CloneRepoUsingToken(ctx context.Context, token, gitUrl, dir, user string, args ...string) (string, *git.Repository, error) {
 	userInfo := url.UserPassword(user, token)
-	return CloneRepo(ctx, userInfo, gitUrl, args...)
+	return CloneRepo(ctx, userInfo, gitUrl, dir, args...)
 }
 
 // CloneRepoUsingUnauthenticated clones a repo with no authentication required.
-func CloneRepoUsingUnauthenticated(ctx context.Context, url string, args ...string) (string, *git.Repository, error) {
-	return CloneRepo(ctx, nil, url, args...)
+func CloneRepoUsingUnauthenticated(ctx context.Context, url string, dir string, args ...string) (string, *git.Repository, error) {
+	return CloneRepo(ctx, nil, url, dir, args...)
 }
 
 // CloneRepoUsingSSH clones a repo using SSH.
-func CloneRepoUsingSSH(ctx context.Context, gitURL string, args ...string) (string, *git.Repository, error) {
+func CloneRepoUsingSSH(ctx context.Context, gitURL string, dir string, args ...string) (string, *git.Repository, error) {
 	if isCodeCommitURL(gitURL) {
-		return CloneRepo(ctx, nil, gitURL, args...)
+		return CloneRepo(ctx, nil, gitURL, dir, args...)
 	}
 	userInfo := url.User("git")
-	return CloneRepo(ctx, userInfo, gitURL, args...)
+	return CloneRepo(ctx, userInfo, gitURL, dir, args...)
 }
 
 var codeCommitRE = regexp.MustCompile(`ssh://git-codecommit\.[\w-]+\.amazonaws\.com`)
@@ -1180,13 +1194,13 @@ func PrepareRepo(ctx context.Context, uriString string) (string, bool, error) {
 			if !ok {
 				return "", remote, fmt.Errorf("password must be included in Git repo URL when username is provided")
 			}
-			path, _, err = CloneRepoUsingToken(ctx, password, remotePath, uri.User.Username())
+			path, _, err = CloneRepoUsingToken(ctx, password, remotePath, "", uri.User.Username())
 			if err != nil {
 				return path, remote, fmt.Errorf("failed to clone authenticated Git repo (%s): %s", uri.Redacted(), err)
 			}
 		default:
 			ctx.Logger().V(1).Info("cloning repo without authentication", "uri", uri)
-			path, _, err = CloneRepoUsingUnauthenticated(ctx, remotePath)
+			path, _, err = CloneRepoUsingUnauthenticated(ctx, remotePath, "")
 			if err != nil {
 				return path, remote, fmt.Errorf("failed to clone unauthenticated Git repo (%s): %s", remotePath, err)
 			}
@@ -1194,7 +1208,7 @@ func PrepareRepo(ctx context.Context, uriString string) (string, bool, error) {
 	case "ssh":
 		remotePath := uri.String()
 		remote = true
-		path, _, err = CloneRepoUsingSSH(ctx, remotePath)
+		path, _, err = CloneRepoUsingSSH(ctx, remotePath, "")
 		if err != nil {
 			return path, remote, fmt.Errorf("failed to clone unauthenticated Git repo (%s): %s", remotePath, err)
 		}

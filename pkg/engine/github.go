@@ -28,6 +28,7 @@ func (e *Engine) ScanGitHub(ctx context.Context, c sources.GithubConfig) (source
 		IncludeWikis:               c.IncludeWikis,
 		SkipBinaries:               c.SkipBinaries,
 		CommentsTimeframeDays:      c.CommentsTimeframeDays,
+		CloneDirectory:             c.CloneDirectory,
 	}
 	if len(c.Token) > 0 {
 		connection.Credential = &sourcespb.GitHub_Token{
