@@ -75,8 +75,8 @@ var (
 	includeDetectors     = cli.Flag("include-detectors", "Comma separated list of detector types to include. Protobuf name or IDs may be used, as well as ranges.").Default("all").String()
 	excludeDetectors     = cli.Flag("exclude-detectors", "Comma separated list of detector types to exclude. Protobuf name or IDs may be used, as well as ranges. IDs defined here take precedence over the include list.").String()
 	jobReportFile        = cli.Flag("output-report", "Write a scan report to the provided path.").Hidden().OpenFile(os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
-
-	noVerificationCache = cli.Flag("no-verification-cache", "Disable verification caching").Bool()
+	printOnce            = cli.Flag("print-once", "Only print the first occurrence of a result.").Bool()
+	noVerificationCache  = cli.Flag("no-verification-cache", "Disable verification caching").Bool()
 
 	// Add feature flags
 	forceSkipBinaries  = cli.Flag("force-skip-binaries", "Force skipping binaries.").Bool()
@@ -490,6 +490,7 @@ func run(state overseer.State) {
 		FilterEntropy:            *filterEntropy,
 		Results:                  parsedResults,
 		PrintAvgDetectorTime:     *printAvgDetectorTime,
+		PrintOnce:                *printOnce,
 		ShouldScanEntireChunk:    *scanEntireChunk,
 		VerificationCacheMetrics: &verificationCacheMetrics,
 	}

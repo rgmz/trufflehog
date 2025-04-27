@@ -87,7 +87,7 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 		var auths map[string]dockerAuth
 		if err := json.NewDecoder(strings.NewReader(match)).Decode(&auths); err != nil {
 			logger.Error(err, "Could not parse Docker auth JSON", "input", match)
-			return results, err
+			continue
 		} else if len(auths) == 0 {
 			continue
 		}

@@ -124,6 +124,7 @@ type Config struct {
 	// Calculating the average time taken by each detector is an expensive operation
 	// and should be avoided unless specified by the user.
 	PrintAvgDetectorTime bool
+	PrintOnce            bool
 
 	// DetectorWorkerMultiplier is used to determine the number of detector workers to spawn.
 	DetectorWorkerMultiplier int
@@ -159,6 +160,7 @@ type Engine struct {
 	notifyUnknownResults    bool
 	retainFalsePositives    bool
 	printAvgDetectorTime    bool
+	printOnce               bool
 	// By default, the engine will only scan a subset of the chunk if a detector matches the chunk.
 	// If this flag is set to true, the engine will scan the entire chunk.
 	scanEntireChunk bool
@@ -209,6 +211,7 @@ func NewEngine(ctx context.Context, cfg *Config) (*Engine, error) {
 		filterUnverified:              cfg.FilterUnverified,
 		filterEntropy:                 cfg.FilterEntropy,
 		printAvgDetectorTime:          cfg.PrintAvgDetectorTime,
+		printOnce:                     cfg.PrintOnce,
 		retainFalsePositives:          cfg.LogFilteredUnverified,
 		sourceManager:                 cfg.SourceManager,
 		scanEntireChunk:               cfg.ShouldScanEntireChunk,
@@ -959,10 +962,18 @@ func (e *Engine) notifierWorker(ctx context.Context) {
 		// Duplicate results with the same decoder type SHOULD have their own entry in the
 		// results list, this would happen if the same secret is found multiple times.
 		// Note: If the source type is postman, we dedupe the results regardless of decoder type.
-		key := fmt.Sprintf("%s%s%s%+v", result.DetectorType.String(), result.Raw, result.RawV2, result.SourceMetadata)
-		if val, ok := e.dedupeCache.Get(key); ok && (val != result.DecoderType ||
-			result.SourceType == sourcespb.SourceType_SOURCE_TYPE_POSTMAN) {
-			continue
+		var key string
+		if e.printOnce {
+			key = fmt.Sprintf("%s%s%s", result.DetectorType.String(), result.Raw, result.RawV2)
+			if _, ok := e.dedupeCache.Get(key); ok {
+				continue
+			}
+		} else {
+			key = fmt.Sprintf("%s%s%s%+v", result.DetectorType.String(), result.Raw, result.RawV2, result.SourceMetadata)
+			if val, ok := e.dedupeCache.Get(key); ok && (val != result.DecoderType ||
+				result.SourceType == sourcespb.SourceType_SOURCE_TYPE_POSTMAN) {
+				continue
+			}
 		}
 		e.dedupeCache.Add(key, result.DecoderType)
 
