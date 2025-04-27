@@ -79,7 +79,7 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 		key, err := normalizeMatch([]byte(match))
 		if err != nil {
 			if !errors.Is(err, errBase64) {
-				logger.V(1).Info("Failed to normalize private key", "err", err)
+				logger.V(1).Info("Failed to normalize private key", "err", err, "input", match)
 			}
 			continue
 		}

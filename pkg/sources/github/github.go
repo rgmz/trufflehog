@@ -724,7 +724,7 @@ func (s *Source) cloneAndScanRepo(ctx context.Context, repoURL string, repoInfo 
 		duration  time.Duration
 		customDir = s.conn.GetCloneDirectory()
 	)
-	if len(s.repoInfoCache.cache) > 1 {
+	if customDir != "" && len(s.repoInfoCache.cache) > 1 {
 		if strings.HasSuffix(customDir, "/") {
 			customDir = path.Join(customDir, repoInfo.owner, repoInfo.name)
 		} else {
