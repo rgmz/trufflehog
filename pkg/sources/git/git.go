@@ -392,19 +392,33 @@ func CloneRepo(ctx context.Context, userInfo *url.Userinfo, gitURL string, dir s
 	var (
 		isDefaultDir = dir == ""
 		clonePath    = dir
+		params       = cloneParams{userInfo, gitURL, args, clonePath}
 		err          error
 	)
 	if isDefaultDir {
 		if clonePath, err = cleantemp.MkdirTemp(); err != nil {
 			return "", nil, err
 		}
+		params.clonePath = clonePath
 	} else {
+		if info, _ := os.Stat(clonePath); info != nil {
+			if err = executeFetch(ctx, params); err != nil {
+				return "", nil, err
+			}
+
+			options := &git.PlainOpenOptions{DetectDotGit: true, EnableDotGitCommonDir: true}
+			repo, err := git.PlainOpenWithOptions(clonePath, options)
+			if err != nil {
+				return "", nil, fmt.Errorf("could not open repo: %w", err)
+			}
+			return dir, repo, nil
+		}
 		if err = os.MkdirAll(dir, 0755); err != nil {
 			return "", nil, err
 		}
 	}
 
-	repo, err := executeClone(ctx, cloneParams{userInfo, gitURL, args, clonePath})
+	repo, err := executeClone(ctx, params)
 	if err != nil && isDefaultDir {
 		// DO NOT FORGET TO CLEAN UP THE CLONE PATH HERE!!
 		// If we don't, we'll end up with a bunch of orphaned directories in the temp dir.
@@ -484,6 +498,44 @@ func executeClone(ctx context.Context, params cloneParams) (*git.Repository, err
 	logger.V(1).Info("successfully cloned repo")
 
 	return repo, nil
+}
+
+func executeFetch(ctx context.Context, params cloneParams) error {
+	gitArgs := []string{
+		"fetch",
+		"--all",
+		"--force",
+		//"--recurse-submodules", "yes",
+		"--quiet", // https://git-scm.com/docs/git-clone#Documentation/git-clone.txt-code--quietcode
+	}
+	fetchCmd := exec.Command("git", gitArgs...)
+
+	logger := ctx.Logger().WithValues(
+		"subcommand", "git fetch",
+		"path", params.clonePath,
+	)
+
+	// Execute command and wait for the stdout / stderr.
+	outputBytes, err := fetchCmd.CombinedOutput()
+	output := string(outputBytes)
+	if err != nil {
+		if strings.HasPrefix(output, "fatal:") {
+			err = errors.New(output)
+		} else {
+			err = fmt.Errorf("%w, %s", err, output)
+		}
+	}
+	logger.V(3).Info("git subcommand finished", "output", output, "err", err)
+
+	if fetchCmd.ProcessState == nil {
+		return fmt.Errorf("fetch command exited with no output")
+	} else if fetchCmd.ProcessState.ExitCode() != 0 {
+		logger.Error(err, "git fetch failed")
+		return fmt.Errorf("could not fetch repo: %w", err)
+	}
+
+	logger.V(1).Info("successfully fetched repo")
+	return nil
 }
 
 // PingRepoUsingToken executes git ls-remote on a repo and returns any error that occurs. It can be used to validate
@@ -1156,13 +1208,13 @@ func prepareRepoSinceCommit(ctx context.Context, uriString, commitHash string) (
 		if !ok {
 			return "", true, fmt.Errorf("password must be included in Git repo URL when username is provided")
 		}
-		path, _, err = CloneRepoUsingToken(ctx, password, remotePath, uri.User.Username(), "--shallow-since", timestamp)
+		path, _, err = CloneRepoUsingToken(ctx, password, remotePath, "", uri.User.Username(), "--shallow-since", timestamp)
 		if err != nil {
 			return path, true, fmt.Errorf("failed to clone authenticated Git repo (%s): %s", uri.Redacted(), err)
 		}
 	default:
 		ctx.Logger().V(1).Info("cloning repo without authentication", "uri", uri)
-		path, _, err = CloneRepoUsingUnauthenticated(ctx, remotePath, "--shallow-since", timestamp)
+		path, _, err = CloneRepoUsingUnauthenticated(ctx, remotePath, "", "--shallow-since", timestamp)
 		if err != nil {
 			return path, true, fmt.Errorf("failed to clone unauthenticated Git repo (%s): %s", remotePath, err)
 		}
