@@ -14,7 +14,7 @@ import (
 var (
 	validPattern   = "sccqe60k-nsak-h1m1-vzq8-vr7u4gxihiwl"
 	invalidPattern = "sccqe60k?nsak-h1m1-vzq8-vr7u4gxihiwl"
-	keyword        = "privacy"
+	keyword        = "privacy.com"
 )
 
 func TestPrivacy_Pattern(t *testing.T) {
@@ -34,7 +34,7 @@ func TestPrivacy_Pattern(t *testing.T) {
 			name:  "valid pattern - ignore duplicate",
 			input: fmt.Sprintf("%s token = '%s' | '%s'", keyword, validPattern, validPattern),
 			want:  []string{validPattern},
-},
+		},
 		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("%s = '%s'", keyword, invalidPattern),
