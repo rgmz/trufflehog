@@ -1,8 +1,7 @@
-package accuweather
+package langfuse
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -11,35 +10,34 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/engine/ahocorasick"
 )
 
-var (
-	validPattern           = "DqFtwc490oPc%xaE67sBSF741M56%sd091A"
-	invalidPattern         = "DqFtwc490oPc%xaE67sBSF741M56=sd091A"
-	validPatternLowEntropy = "DsFtwfaEsAPS%eaEsaESEsFesfMsfMsDmdA"
-)
-
-func TestAccuWeather_Pattern(t *testing.T) {
+func TestLangfuse_Pattern(t *testing.T) {
 	d := Scanner{}
 	ahoCorasickCore := ahocorasick.NewAhoCorasickCore([]detectors.Detector{d})
-
 	tests := []struct {
 		name  string
 		input string
 		want  []string
 	}{
 		{
-			name:  "valid pattern",
-			input: fmt.Sprintf("accuweather token = '%s'", validPattern),
-			want:  []string{validPattern},
+			name: "typical pattern",
+			input: `langfuse_public_key = pk-lf-85bd9970-f7fd-4683-bdcb-e20563f405fc
+                    langfuse_secret_key = sk-lf-6ca47579-5a0e-4450-85c0-149f1eb3793c`,
+			want: []string{"sk-lf-6ca47579-5a0e-4450-85c0-149f1eb3793c"},
 		},
 		{
-			name:  "invalid pattern",
-			input: fmt.Sprintf("accuweather = '%s'", invalidPattern),
-			want:  nil,
+			name: "finds all matches",
+			input: `langfuse_public_key1 = pk-lf-85bd9970-f7fd-4683-bdcb-e20563f405fc
+                    langfuse_secret_key1 = sk-lf-6ca47579-5a0e-4450-85c0-149f1eb3793c
+					langfuse_public_key2 = pk-lf-73efae6a-6638-4f78-889a-118db7852b51
+                    langfuse_secret_key2 = sk-lf-7227ec1f-eb60-4e8e-9893-315a96b4ce31`,
+			want: []string{"sk-lf-6ca47579-5a0e-4450-85c0-149f1eb3793c",
+				"sk-lf-7227ec1f-eb60-4e8e-9893-315a96b4ce31"},
 		},
 		{
-			name:  "valid pattern - Shannon entropy below threshold",
-			input: fmt.Sprintf("accuweather = '%s'", validPatternLowEntropy),
-			want:  nil,
+			name: "invalid pattern",
+			input: `langfuse_public_key1 = pk-lf-invalid
+                    langfuse_secret_key1 = sk-lf-invalid`,
+			want: []string{},
 		},
 	}
 

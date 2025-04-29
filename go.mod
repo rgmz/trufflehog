@@ -30,7 +30,7 @@ require (
 	github.com/bradleyfalzon/ghinstallation/v2 v2.12.0
 	github.com/brianvoe/gofakeit/v7 v7.2.1
 	github.com/coinbase/waas-client-library-go v1.0.8
-	github.com/couchbase/gocb/v2 v2.9.4
+	github.com/couchbase/gocb/v2 v2.10.0
 	github.com/crewjam/rfc5424 v0.1.0
 	github.com/csnewman/dextk v0.3.0
 	github.com/dustin/go-humanize v1.0.1
@@ -78,7 +78,7 @@ require (
 	github.com/sendgrid/sendgrid-go v3.16.0+incompatible
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3
 	github.com/shuheiktgw/go-travis v0.3.1
-	github.com/snowflakedb/gosnowflake v1.12.1
+	github.com/snowflakedb/gosnowflake v1.13.3
 	github.com/stretchr/testify v1.10.0
 	github.com/tailscale/depaware v0.0.0-20250112153213-b748de04d81b
 	github.com/testcontainers/testcontainers-go v0.34.0
@@ -159,7 +159,7 @@ require (
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/platforms v0.2.1 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.16.3 // indirect
-	github.com/couchbase/gocbcore/v10 v10.5.4 // indirect
+	github.com/couchbase/gocbcore/v10 v10.7.0 // indirect
 	github.com/couchbase/gocbcoreps v0.1.3 // indirect
 	github.com/couchbase/goprotostellar v1.0.2 // indirect
 	github.com/couchbaselabs/gocbconnstr/v2 v2.0.0-20240607131231-fb385523de28 // indirect
@@ -203,6 +203,7 @@ require (
 	github.com/google/pprof v0.0.0-20240227163752-401108e1b7e7 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.6 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0 // indirect
 	github.com/gsterjov/go-libsecret v0.0.0-20161001094733-a6f4afe4910c // indirect

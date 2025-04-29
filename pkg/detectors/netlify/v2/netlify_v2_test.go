@@ -1,4 +1,4 @@
-package accuweather
+package netlify
 
 import (
 	"context"
@@ -12,34 +12,33 @@ import (
 )
 
 var (
-	validPattern           = "DqFtwc490oPc%xaE67sBSF741M56%sd091A"
-	invalidPattern         = "DqFtwc490oPc%xaE67sBSF741M56=sd091A"
-	validPatternLowEntropy = "DsFtwfaEsAPS%eaEsaESEsFesfMsfMsDmdA"
+	validPattern   = "nfp_gsTPZr8vTqmit69DY8u8es68N3XvxqW20330"
+	invalidPattern = "nfp_?sTPZr8vTqmit69DY8u8es68N3XvxqW20330"
+	keyword        = "nfp_"
 )
 
-func TestAccuWeather_Pattern(t *testing.T) {
+func TestNetlify_Pattern(t *testing.T) {
 	d := Scanner{}
 	ahoCorasickCore := ahocorasick.NewAhoCorasickCore([]detectors.Detector{d})
-
 	tests := []struct {
 		name  string
 		input string
 		want  []string
 	}{
 		{
-			name:  "valid pattern",
-			input: fmt.Sprintf("accuweather token = '%s'", validPattern),
+			name:  "valid pattern - with keyword netlify",
+			input: fmt.Sprintf("%s token = '%s'", keyword, validPattern),
+			want:  []string{validPattern},
+		},
+		{
+			name:  "valid pattern - ignore duplicate",
+			input: fmt.Sprintf("%s token = '%s' | '%s'", keyword, validPattern, validPattern),
 			want:  []string{validPattern},
 		},
 		{
 			name:  "invalid pattern",
-			input: fmt.Sprintf("accuweather = '%s'", invalidPattern),
-			want:  nil,
-		},
-		{
-			name:  "valid pattern - Shannon entropy below threshold",
-			input: fmt.Sprintf("accuweather = '%s'", validPatternLowEntropy),
-			want:  nil,
+			input: fmt.Sprintf("%s = '%s'", keyword, invalidPattern),
+			want:  []string{},
 		},
 	}
 

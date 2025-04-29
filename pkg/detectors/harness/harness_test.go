@@ -1,4 +1,4 @@
-package accuweather
+package harness
 
 import (
 	"context"
@@ -12,15 +12,14 @@ import (
 )
 
 var (
-	validPattern           = "DqFtwc490oPc%xaE67sBSF741M56%sd091A"
-	invalidPattern         = "DqFtwc490oPc%xaE67sBSF741M56=sd091A"
-	validPatternLowEntropy = "DsFtwfaEsAPS%eaEsaESEsFesfMsfMsDmdA"
+	validKey   = "pat.4oXWHvYFRNOGLVpFTZGGTA.68077fc826afe36865614d58.2fFEmr57WO3zPmev3jze"
+	invalidKey = "pat.4oXWHvYFRNOGLVpFTZGGTA.6807c5bed9599c324f6368ce.usCT2fzvADwSoXzXc"
+	keyword    = "pat."
 )
 
-func TestAccuWeather_Pattern(t *testing.T) {
+func TestHarness_Pattern(t *testing.T) {
 	d := Scanner{}
 	ahoCorasickCore := ahocorasick.NewAhoCorasickCore([]detectors.Detector{d})
-
 	tests := []struct {
 		name  string
 		input string
@@ -28,17 +27,12 @@ func TestAccuWeather_Pattern(t *testing.T) {
 	}{
 		{
 			name:  "valid pattern",
-			input: fmt.Sprintf("accuweather token = '%s'", validPattern),
-			want:  []string{validPattern},
+			input: fmt.Sprintf("%s token = '%s'", keyword, validKey),
+			want:  []string{validKey},
 		},
 		{
 			name:  "invalid pattern",
-			input: fmt.Sprintf("accuweather = '%s'", invalidPattern),
-			want:  nil,
-		},
-		{
-			name:  "valid pattern - Shannon entropy below threshold",
-			input: fmt.Sprintf("accuweather = '%s'", validPatternLowEntropy),
+			input: fmt.Sprintf("%s token = '%s'", keyword, invalidKey),
 			want:  nil,
 		},
 	}
