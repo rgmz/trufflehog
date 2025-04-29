@@ -91,7 +91,6 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/bitbar"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/bitcoinaverage"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/bitfinex"
-	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/bitlyaccesstoken"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/bitmex"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/blazemeter"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/blitapp"
@@ -219,7 +218,6 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/digitaloceanv2"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/discordbottoken"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/discordwebhook"
-	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/disqus"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/ditto"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/dnscheck"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/docker"
@@ -244,6 +242,7 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/edamam"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/edenai"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/eightxeight"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/elasticcloud"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/elasticemail"
 	elevenlabsv1 "github.com/trufflesecurity/trufflehog/v3/pkg/detectors/elevenlabs/v1"
 	elevenlabsv2 "github.com/trufflesecurity/trufflehog/v3/pkg/detectors/elevenlabs/v2"
@@ -313,7 +312,6 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/getgeoapi"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/getgist"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/getresponse"
-	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/getsandbox"
 	githubv1 "github.com/trufflesecurity/trufflehog/v3/pkg/detectors/github/v1"
 	githubv2 "github.com/trufflesecurity/trufflehog/v3/pkg/detectors/github/v2"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/github_oauth2"
@@ -359,13 +357,13 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/hunter"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/hybiscus"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/hypertrack"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/ibmclouduserkey"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/iconfinder"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/iexapis"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/iexcloud"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/imagekit"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/imagga"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/impala"
-	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/infura"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/insightly"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/instabot"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/instamojo"
@@ -507,7 +505,6 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/opencagedata"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/openuv"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/openvpn"
-	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/openweather"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/opsgenie"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/optimizely"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors/overloop"
@@ -932,7 +929,6 @@ func buildDetectorList() []detectors.Detector {
 		&bitbar.Scanner{},
 		&bitcoinaverage.Scanner{},
 		&bitfinex.Scanner{},
-		&bitlyaccesstoken.Scanner{},
 		&bitmex.Scanner{},
 		&blazemeter.Scanner{},
 		&blitapp.Scanner{},
@@ -1063,7 +1059,6 @@ func buildDetectorList() []detectors.Detector {
 		&digitaloceanv2.Scanner{},
 		&discordbottoken.Scanner{},
 		&discordwebhook.Scanner{},
-		&disqus.Scanner{},
 		&ditto.Scanner{},
 		&dnscheck.Scanner{},
 		&docker.Scanner{},
@@ -1088,6 +1083,7 @@ func buildDetectorList() []detectors.Detector {
 		&edamam.Scanner{},
 		&edenai.Scanner{},
 		&eightxeight.Scanner{},
+		&elasticcloud.Scanner{},
 		&elasticemail.Scanner{},
 		&elevenlabsv1.Scanner{},
 		&elevenlabsv2.Scanner{},
@@ -1160,7 +1156,6 @@ func buildDetectorList() []detectors.Detector {
 		&getgeoapi.Scanner{},
 		&getgist.Scanner{},
 		&getresponse.Scanner{},
-		&getsandbox.Scanner{},
 		&github_oauth2.Scanner{},
 		&githubapp.Scanner{},
 		&githubv1.Scanner{},
@@ -1207,14 +1202,13 @@ func buildDetectorList() []detectors.Detector {
 		&hunter.Scanner{},
 		&hybiscus.Scanner{},
 		&hypertrack.Scanner{},
-		// &ibmclouduserkey.Scanner{},
+		&ibmclouduserkey.Scanner{},
 		&iconfinder.Scanner{},
 		&iexapis.Scanner{},
 		&iexcloud.Scanner{},
 		&imagekit.Scanner{},
 		&imagga.Scanner{},
 		&impala.Scanner{},
-		&infura.Scanner{},
 		&insightly.Scanner{},
 		&instabot.Scanner{},
 		&instamojo.Scanner{},
@@ -1362,7 +1356,6 @@ func buildDetectorList() []detectors.Detector {
 		&opencagedata.Scanner{},
 		&openuv.Scanner{},
 		&openvpn.Scanner{},
-		&openweather.Scanner{},
 		&opsgenie.Scanner{},
 		&optimizely.Scanner{},
 		&overloop.Scanner{},

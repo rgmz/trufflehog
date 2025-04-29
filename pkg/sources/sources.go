@@ -261,6 +261,8 @@ type GithubConfig struct {
 	IncludeWikis bool
 	// CommentsTimeframeDays indicates how many days of comments to include in the scan.
 	CommentsTimeframeDays uint32
+	// CloneDirectory if specified will clone the repositories to a specific place.
+	CloneDirectory string
 }
 
 // GitHubExperimentalConfig defines the optional configuration for an experimental GitHub source.

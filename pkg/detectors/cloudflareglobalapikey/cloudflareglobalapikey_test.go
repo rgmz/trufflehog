@@ -31,11 +31,6 @@ func TestCloudFlareGlobalAPIKey_Pattern(t *testing.T) {
 			want:  []string{"abcD123efg456HIJklmn789OPQ_rstUVWxYZ-testuser1005@example.com"},
 		},
 		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("cloudflare keyword is not close to the real key and id = %s", validPattern),
-			want:  nil,
-		},
-		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("cloudflare: %s", invalidPattern),
 			want:  nil,

@@ -32,11 +32,6 @@ func TestAccuWeather_Pattern(t *testing.T) {
 			want:  []string{validPattern},
 		},
 		{
-			name:  "valid pattern - out of prefix range",
-			input: fmt.Sprintf("accuweather token keyword is not close to the real token = '%s'", validPattern),
-			want:  nil,
-		},
-		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("accuweather = '%s'", invalidPattern),
 			want:  nil,

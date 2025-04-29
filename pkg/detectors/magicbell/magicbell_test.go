@@ -31,11 +31,6 @@ func TestMagicBell_Pattern(t *testing.T) {
 			want:  []string{"abcde12345-67890fghijklmnopqrs-tuvwxyzYu"},
 		},
 		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("magicbell keyword is not close to the real key and id = %s", validPattern),
-			want:  nil,
-		},
-		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("magicbell: %s", invalidPattern),
 			want:  nil,

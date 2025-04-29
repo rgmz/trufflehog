@@ -11,9 +11,9 @@ import (
 
 const (
 	// ChunkSize is the maximum size of a chunk.
-	ChunkSize = 10 * 1024
+	ChunkSize = 100 * 1024
 	// PeekSize is the size of the peek into the previous chunk.
-	PeekSize = 3 * 1024
+	PeekSize = 10 * 1024
 	// TotalChunkSize is the total size of a chunk with peek data.
 	TotalChunkSize = ChunkSize + PeekSize
 )

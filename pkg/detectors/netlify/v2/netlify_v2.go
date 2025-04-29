@@ -3,9 +3,9 @@ package netlify
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
-	"strings"
 
 	regexp "github.com/wasilibs/go-re2"
 
@@ -23,7 +23,7 @@ var _ detectors.Versioner = (*Scanner)(nil)
 var (
 	client = common.SaneHttpClient()
 
-	keyPat = regexp.MustCompile(detectors.PrefixRegex([]string{"netlify"}) + `\b(nfp_[a-zA-Z0-9_]{36})\b`)
+	keyPat = regexp.MustCompile(`\b(nfp_[a-zA-Z0-9_]{36})\b`)
 )
 
 func (Scanner) Version() int { return 2 }
@@ -31,21 +31,26 @@ func (Scanner) Version() int { return 2 }
 // Keywords are used for efficiently pre-filtering chunks.
 // Use identifiers in the secret preferably, or the provider name.
 func (s Scanner) Keywords() []string {
-	return []string{"netlify"}
+	return []string{"nfp_"}
 }
 
 // FromData will find and optionally verify Netlify secrets in a given set of bytes.
 func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (results []detectors.Result, err error) {
 	dataStr := string(data)
 
-	matches := keyPat.FindAllStringSubmatch(dataStr, -1)
+	uniqueMatches := make(map[string]struct{})
+	for _, match := range keyPat.FindAllStringSubmatch(dataStr, -1) {
+		m := match[1]
+		if detectors.StringShannonEntropy(m) < 3 {
+			continue
+		}
+		uniqueMatches[m] = struct{}{}
+	}
 
-	for _, match := range matches {
-		resMatch := strings.TrimSpace(match[1])
-
+	for match := range uniqueMatches {
 		s1 := detectors.Result{
 			DetectorType: detectorspb.DetectorType_Netlify,
-			Raw:          []byte(resMatch),
+			Raw:          []byte(match),
 		}
 		s1.ExtraData = map[string]string{
 			"rotation_guide": "https://howtorotate.com/docs/tutorials/netlify/",
@@ -57,12 +62,23 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 			if err != nil {
 				continue
 			}
-			req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", resMatch))
+			req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", match))
 			res, err := client.Do(req)
-			if err == nil {
-				defer res.Body.Close()
-				if res.StatusCode >= 200 && res.StatusCode < 300 {
+			if err != nil {
+				s1.SetVerificationError(err)
+			} else {
+				defer func() {
+					_, _ = io.Copy(io.Discard, res.Body)
+					_ = res.Body.Close()
+				}()
+				switch res.StatusCode {
+				case http.StatusOK:
 					s1.Verified = true
+				case http.StatusUnauthorized:
+					// Do nothing.
+				default:
+					body, _ := io.ReadAll(res.Body)
+					s1.SetVerificationError(fmt.Errorf("unexpected response %d: %q", res.StatusCode, string(body)))
 				}
 			}
 		}
