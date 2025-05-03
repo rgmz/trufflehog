@@ -14,7 +14,7 @@ import (
 var (
 	validPattern   = "nfp_gsTPZr8vTqmit69DY8u8es68N3XvxqW20330"
 	invalidPattern = "nfp_?sTPZr8vTqmit69DY8u8es68N3XvxqW20330"
-	keyword        = "netlify"
+	keyword        = "nfp_"
 )
 
 func TestNetlify_Pattern(t *testing.T) {
@@ -34,11 +34,6 @@ func TestNetlify_Pattern(t *testing.T) {
 			name:  "valid pattern - ignore duplicate",
 			input: fmt.Sprintf("%s token = '%s' | '%s'", keyword, validPattern, validPattern),
 			want:  []string{validPattern},
-		},
-		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("%s keyword is not close to the real key in the data\n = '%s'", keyword, validPattern),
-			want:  []string{},
 		},
 		{
 			name:  "invalid pattern",

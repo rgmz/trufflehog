@@ -72,7 +72,6 @@ func (s scanner) Keywords() []string {
 func (s scanner) FromData(ctx context.Context, verify bool, data []byte) (results []detectors.Result, err error) {
 	logger := logContext.AddLogger(ctx).Logger().WithName("awssessionkey")
 	dataStr := string(data)
-	dataStr = aws.UrlEncodedReplacer.Replace(dataStr)
 
 	// Filter & deduplicate matches.
 	idMatches := make(map[string]struct{})

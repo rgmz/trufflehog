@@ -31,11 +31,6 @@ func TestAirship_Pattern(t *testing.T) {
 			want:  []string{validPattern},
 		},
 		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("airship keyword is not close to the real key and secret = '%s'", validPattern),
-			want:  nil,
-		},
-		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("airship = '%s'", invalidPattern),
 			want:  nil,

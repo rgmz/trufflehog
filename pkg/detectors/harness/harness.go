@@ -32,7 +32,7 @@ var _ detectors.Detector = (*Scanner)(nil)
 var (
 	defaultClient = common.SaneHttpClient()
 
-	keyPat = regexp.MustCompile(detectors.PrefixRegex([]string{"harness"}) + `\b(pat\.[A-Za-z0-9]{22}\.[0-9a-f]{24}\.[A-Za-z0-9]{20})\b`)
+	keyPat = regexp.MustCompile(`\b(pat\.[A-Za-z0-9]{22}\.[0-9a-f]{24}\.[A-Za-z0-9]{20})\b`)
 )
 
 func (s Scanner) getClient() *http.Client {
@@ -46,7 +46,7 @@ func (s Scanner) getClient() *http.Client {
 // Keywords are used for efficiently pre-filtering chunks.
 // Use identifiers in the secret preferably, or the provider name.
 func (s Scanner) Keywords() []string {
-	return []string{"harness"}
+	return []string{"pat."}
 }
 
 // FromData will find and optionally verify Harness secrets in a given set of bytes.
@@ -54,9 +54,12 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 	dataStr := string(data)
 
 	uniqueMatches := make(map[string]struct{})
-
 	for _, match := range keyPat.FindAllStringSubmatch(dataStr, -1) {
-		uniqueMatches[match[1]] = struct{}{}
+		m := match[1]
+		if detectors.StringShannonEntropy(m) < 3 {
+			continue
+		}
+		uniqueMatches[m] = struct{}{}
 	}
 
 	for match := range uniqueMatches {

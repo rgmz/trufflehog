@@ -32,11 +32,6 @@ func TestAeroWorkflow_Pattern(t *testing.T) {
 			want:  []string{"qscVgy!WdvG;^#O:*?TG806445634"},
 		},
 		{
-			name:  "valid pattern - out of prefix range",
-			input: fmt.Sprintf("aeroworkflow keyword is not close to the real id and secret = '%s'", validPattern),
-			want:  nil,
-		},
-		{
 			name:  "valid pattern - only key",
 			input: fmt.Sprintf("aeroworkflow %s", strings.Split(validPattern, "/")[0]),
 			want:  nil,
