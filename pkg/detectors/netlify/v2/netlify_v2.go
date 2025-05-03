@@ -22,8 +22,12 @@ var _ detectors.Versioner = (*Scanner)(nil)
 
 var (
 	client = common.SaneHttpClient()
-
 	keyPat = regexp.MustCompile(`\b(nfp_[a-zA-Z0-9_]{36})\b`)
+)
+
+const (
+	rotationGuideUrl = "https://howtorotate.com/docs/tutorials/netlify/"
+	verificationUrl  = "https://api.netlify.com/api/v1/sites"
 )
 
 func (Scanner) Version() int { return 2 }
@@ -53,33 +57,17 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 			Raw:          []byte(match),
 		}
 		s1.ExtraData = map[string]string{
-			"rotation_guide": "https://howtorotate.com/docs/tutorials/netlify/",
+			"rotation_guide": rotationGuideUrl,
 			"version":        strconv.Itoa(s.Version()),
 		}
 
 		if verify {
-			req, err := http.NewRequestWithContext(ctx, "GET", "https://api.netlify.com/api/v1/sites", nil)
-			if err != nil {
-				continue
-			}
-			req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", match))
-			res, err := client.Do(req)
-			if err != nil {
-				s1.SetVerificationError(err)
-			} else {
-				defer func() {
-					_, _ = io.Copy(io.Discard, res.Body)
-					_ = res.Body.Close()
-				}()
-				switch res.StatusCode {
-				case http.StatusOK:
-					s1.Verified = true
-				case http.StatusUnauthorized:
-					// Do nothing.
-				default:
-					body, _ := io.ReadAll(res.Body)
-					s1.SetVerificationError(fmt.Errorf("unexpected response %d: %q", res.StatusCode, string(body)))
-				}
+			isVerified, verificationErr := verifyMatch(ctx, client, match)
+			s1.Verified = isVerified
+			s1.SetVerificationError(verificationErr, match)
+
+			if s1.Verified {
+				s1.AnalysisInfo = map[string]string{"key": match}
 			}
 		}
 
@@ -87,6 +75,34 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 	}
 
 	return results, nil
+}
+
+func verifyMatch(ctx context.Context, client *http.Client, token string) (bool, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, verificationUrl, nil)
+	if err != nil {
+		return false, nil
+	}
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+	res, err := client.Do(req)
+
+	if err != nil {
+		return false, err
+	}
+
+	defer func() {
+		_, _ = io.Copy(io.Discard, res.Body)
+		_ = res.Body.Close()
+	}()
+
+	switch res.StatusCode {
+	case http.StatusOK:
+		return true, nil
+	case http.StatusUnauthorized:
+		return false, nil
+	default:
+		body, _ := io.ReadAll(res.Body)
+		return false, fmt.Errorf("unexpected response %d: %q", res.StatusCode, string(body))
+	}
 }
 
 func (s Scanner) Type() detectorspb.DetectorType {
