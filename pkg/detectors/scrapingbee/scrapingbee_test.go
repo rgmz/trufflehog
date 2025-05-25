@@ -43,8 +43,10 @@ func TestScrapingBee_Pattern(t *testing.T) {
 			name: `valid_js1`,
 			input: `  const options = {
     uri: "https://app.scrapingbee.com/api/v1?",
-    api_key: "34TOQQ77QJALLR07ISPYL4B5EYHW3YLU5GM97GQOCA32BVW3S0S6RTVFCZGTHZ1Q5MHH1Z9GZ0B640LI",
-	};`,
+    params: {
+        api_key: "34TOQQ77QJALLR07ISPYL4B5EYHW3YLU5GM97GQOCA32BVW3S0S6RTVFCZGTHZ1Q5MHH1Z9GZ0B640LI",
+    }
+  };`,
 			want: []string{`34TOQQ77QJALLR07ISPYL4B5EYHW3YLU5GM97GQOCA32BVW3S0S6RTVFCZGTHZ1Q5MHH1Z9GZ0B640LI`},
 		},
 		{
@@ -52,7 +54,8 @@ func TestScrapingBee_Pattern(t *testing.T) {
 			input: `  useEffect(() => {
     setLoading(true)
     base.get('https://app.scrapingbee.com/api/v1', {
-params:{'api_key':'BYZCNNS0SOZCPC4EXD5SXSH0PWAXPWFMZ4SXVEQNEDMKSGBP57K31PJ44V46344XCYN7IARKQWLS0V3X',
+	params: {
+		'api_key':'BYZCNNS0SOZCPC4EXD5SXSH0PWAXPWFMZ4SXVEQNEDMKSGBP57K31PJ44V46344XCYN7IARKQWLS0V3X',
         'url': 'https://www.flipkart.com/search?q=${searchItem}',
 			'block_resources': 'false',
 		}

@@ -10,6 +10,8 @@ enum DecoderType {
   BASE64 = 2;
   UTF16 = 3;
   ESCAPED_UNICODE = 4;
+  HTML = 5;
+  PERCENT = 6;
 }
 
 enum DetectorType {
@@ -1035,6 +1037,7 @@ enum DetectorType {
   XAI = 1023;
   AzureDirectManagementKey = 1024;
   AzureAppConfigConnectionString = 1025;
+  ElasticCloud = 1026;
 }
 
 message Result {

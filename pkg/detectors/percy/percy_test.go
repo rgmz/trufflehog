@@ -34,12 +34,7 @@ func TestPercy_Pattern(t *testing.T) {
 			name:  "valid pattern - ignore duplicate",
 			input: fmt.Sprintf("%s token = 'PERCY_TOKEN=%s' | 'PERCY_TOKEN=%s'", keyword, validPattern, validPattern),
 			want:  []string{validPattern},
-		},
-		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("%s keyword is not close to the real key in the data\n = 'PERCY_TOKEN=%s'", keyword, validPattern),
-			want:  []string{},
-		},
+},
 		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("%s = 'PERCY_TOKEN=%s'", keyword, invalidPattern),

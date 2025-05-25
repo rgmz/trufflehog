@@ -33,13 +33,14 @@ var (
 	emailPat    = regexp.MustCompile(common.EmailPattern)
 
 	// Can use password or personal/organization access token (PAT/OAT) for login, but this scanner will only check for PATs and OATs.
-	accessTokenPat = regexp.MustCompile(`\b(dckr_pat_[a-zA-Z0-9_-]{27}|dckr_oat_[a-zA-Z0-9_-]{32})(?:[^a-zA-Z0-9_-]|\z)`)
+	accessTokenPat  = regexp.MustCompile(`\b(dckr_pat_[a-zA-Z0-9_-]{27}|dckr_oat_[a-zA-Z0-9_-]{32})(?:[^a-zA-Z0-9_-]|\z)`)
+	defaultUsername = "false"
 )
 
 // Keywords are used for efficiently pre-filtering chunks.
 // Use identifiers in the secret preferably, or the provider name.
 func (s Scanner) Keywords() []string {
-	return []string{"docker", "dckr_pat_", "dckr_oat_"}
+	return []string{"dckr_pat_", "dckr_oat_"}
 }
 
 // FromData will find and optionally verify Dockerhub secrets in a given set of bytes.
@@ -49,7 +50,11 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 	// Deduplicate results.
 	tokens := make(map[string]struct{})
 	for _, matches := range accessTokenPat.FindAllStringSubmatch(dataStr, -1) {
-		tokens[matches[1]] = struct{}{}
+		m := matches[1]
+		if detectors.StringShannonEntropy(m) < 4 {
+			continue
+		}
+		tokens[m] = struct{}{}
 	}
 	if len(tokens) == 0 {
 		return
@@ -61,45 +66,32 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 	for _, matches := range emailPat.FindAllStringSubmatch(dataStr, -1) {
 		usernames[matches[1]] = struct{}{}
 	}
+	if len(usernames) == 0 {
+		// This seems to be a special value.
+		usernames[defaultUsername] = struct{}{}
+	}
 
 	// Process results.
 	for token := range tokens {
-		s1 := detectors.Result{
-			DetectorType: s.Type(),
-			Raw:          []byte(token),
-		}
-
+		var r *detectors.Result
 		for username := range usernames {
-			s1.RawV2 = []byte(fmt.Sprintf("%s:%s", username, token))
-
 			if verify {
 				if s.client == nil {
 					s.client = common.SaneHttpClient()
 				}
 
 				isVerified, extraData, verificationErr := s.verifyMatch(ctx, username, token)
-				s1.Verified = isVerified
-				s1.ExtraData = extraData
-				s1.SetVerificationError(verificationErr)
-				if s1.Verified {
-					s1.AnalysisInfo = map[string]string{
-						"username": username,
-						"pat":      token,
-					}
+				if isVerified || len(usernames) == 1 {
+					r = s.createResult(token, username, isVerified, extraData, verificationErr)
+					break
 				}
 			}
-
-			results = append(results, s1)
-
-			if s1.Verified {
-				break
-			}
 		}
 
-		// PAT matches without usernames cannot be verified but might still be useful.
-		if len(usernames) == 0 {
-			results = append(results, s1)
+		if r == nil {
+			r = s.createResult(token, "", false, nil, nil)
 		}
+		results = append(results, *r)
 	}
 	return
 }
@@ -117,7 +109,10 @@ func (s Scanner) verifyMatch(ctx context.Context, username string, password stri
 	if err != nil {
 		return false, nil, err
 	}
-	defer res.Body.Close()
+	defer func() {
+		_, _ = io.Copy(io.Discard, res.Body)
+		_ = res.Body.Close()
+	}()
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return false, nil, err
@@ -129,15 +124,24 @@ func (s Scanner) verifyMatch(ctx context.Context, username string, password stri
 			return false, nil, err
 		}
 
+		var tokenStr string
+		switch {
+		case tokenRes.Token != "":
+			tokenStr = tokenRes.Token
+		case tokenRes.AccessToken != "":
+			tokenStr = tokenRes.AccessToken
+		default:
+			return false, nil, fmt.Errorf("response did not contain token: %q", string(body))
+		}
 		parser := jwt.NewParser()
-		token, _, err := parser.ParseUnverified(tokenRes.Token, &hubJwtClaims{})
+		token, _, err := parser.ParseUnverified(tokenStr, &hubJwtClaims{})
 		if err != nil {
 			return true, nil, err
 		}
 
 		if claims, ok := token.Claims.(*hubJwtClaims); ok {
 			extraData := map[string]string{
-				"hub_username": username,
+				"hub_username": claims.HubClaims.Username,
 				"hub_email":    claims.HubClaims.Email,
 				"hub_scope":    claims.Scope,
 			}
@@ -152,8 +156,10 @@ func (s Scanner) verifyMatch(ctx context.Context, username string, password stri
 		}
 
 		extraData := map[string]string{
-			"hub_username": username,
 			"2fa_required": "true",
+		}
+		if username != defaultUsername {
+			extraData["hub_username"] = username
 		}
 		return true, extraData, nil
 	} else {
@@ -162,7 +168,8 @@ func (s Scanner) verifyMatch(ctx context.Context, username string, password stri
 }
 
 type tokenResponse struct {
-	Token string `json:"access_token"`
+	Token       string `json:"token"`
+	AccessToken string `json:"access_token"`
 }
 
 type userClaims struct {
@@ -178,6 +185,21 @@ type hubJwtClaims struct {
 
 type mfaRequiredResponse struct {
 	MfaToken string `json:"login_2fa_token"`
+}
+
+func (s Scanner) createResult(token string, username string, verified bool, extraData map[string]string, err error) *detectors.Result {
+	r := &detectors.Result{
+		DetectorType: s.Type(),
+		Raw:          []byte(token),
+		ExtraData:    extraData,
+		Verified:     verified,
+		AnalysisInfo: map[string]string{
+			"username": username,
+			"pat":      token,
+		},
+	}
+	r.SetVerificationError(err, token)
+	return r
 }
 
 func (s Scanner) Type() detectorspb.DetectorType {

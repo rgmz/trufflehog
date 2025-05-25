@@ -2,6 +2,7 @@ package ahocorasick
 
 import (
 	"bytes"
+	"math"
 	"strings"
 
 	ahocorasick "github.com/BobuSumisu/aho-corasick"
@@ -220,6 +221,9 @@ func (d *DetectorMatch) mergeMatches() {
 func (d *DetectorMatch) extractMatches(chunkData []byte) {
 	d.matches = make([][]byte, len(d.matchSpans))
 	for i, m := range d.matchSpans {
+		if m.startOffset > m.endOffset {
+			m.startOffset = m.endOffset - int64(math.Min(float64(len(chunkData)), 4200))
+		}
 		d.matches[i] = chunkData[m.startOffset:m.endOffset]
 	}
 }

@@ -5,6 +5,7 @@ import (
 
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/google/go-github/v67/github"
+
 	"github.com/trufflesecurity/trufflehog/v3/pkg/common"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/context"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/pb/credentialspb"
@@ -43,6 +44,6 @@ func (c *basicAuthConnector) APIClient() *github.Client {
 	return c.apiClient
 }
 
-func (c *basicAuthConnector) Clone(ctx context.Context, repoURL string, args ...string) (string, *gogit.Repository, error) {
-	return git.CloneRepoUsingToken(ctx, c.password, repoURL, c.username, args...)
+func (c *basicAuthConnector) Clone(ctx context.Context, repoURL string, dir string, args ...string) (string, *gogit.Repository, error) {
+	return git.CloneRepoUsingToken(ctx, c.password, repoURL, dir, c.username, args...)
 }

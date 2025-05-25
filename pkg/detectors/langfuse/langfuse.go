@@ -22,8 +22,8 @@ var _ detectors.Detector = (*Scanner)(nil)
 
 var (
 	defaultClient = common.SaneHttpClient()
-	publicKey = regexp.MustCompile(detectors.PrefixRegex([]string{"langfuse"}) + `\b(pk-lf-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b`)
-	secretKey = regexp.MustCompile(detectors.PrefixRegex([]string{"langfuse"}) + `\b(sk-lf-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b`)
+	publicKey     = regexp.MustCompile(`\b(pk-lf-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b`)
+	secretKey     = regexp.MustCompile(`\b(sk-lf-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b`)
 )
 
 func (s Scanner) Keywords() []string {
@@ -36,21 +36,29 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 
 	publicKeyMatches := make(map[string]struct{})
 	for _, match := range publicKey.FindAllStringSubmatch(dataStr, -1) {
-		publicKeyMatches[match[1]] = struct{}{}
+		m := match[1]
+		if detectors.StringShannonEntropy(m) < 3 {
+			continue
+		}
+		publicKeyMatches[m] = struct{}{}
 	}
 
 	secretKeyMatches := make(map[string]struct{})
 	for _, match := range secretKey.FindAllStringSubmatch(dataStr, -1) {
+		m := match[1]
+		if detectors.StringShannonEntropy(m) < 3 {
+			continue
+		}
 		secretKeyMatches[match[1]] = struct{}{}
 	}
 
-	for pkMatch := range publicKeyMatches {
-		for skMatch := range secretKeyMatches {
-			s1 := detectors.Result{
-				DetectorType: detectorspb.DetectorType_Langfuse,
-				Raw:          []byte(skMatch),
-			}
+	for skMatch := range secretKeyMatches {
+		s1 := detectors.Result{
+			DetectorType: detectorspb.DetectorType_Langfuse,
+			Raw:          []byte(skMatch),
+		}
 
+		for pkMatch := range publicKeyMatches {
 			if verify {
 				client := s.client
 				if client == nil {
@@ -64,8 +72,8 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 				}
 			}
 
-			results = append(results, s1)
 		}
+		results = append(results, s1)
 	}
 
 	return results, nil

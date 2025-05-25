@@ -67,7 +67,7 @@ func TestSource_Token(t *testing.T) {
 	err = s.enumerateWithApp(ctx, s.connector.(*appConnector).InstallationClient(), noopReporter())
 	assert.NoError(t, err)
 
-	_, _, err = s.cloneRepo(ctx, "https://github.com/truffle-test-integration-org/another-test-repo.git")
+	_, _, err = s.connector.Clone(ctx, "https://github.com/truffle-test-integration-org/another-test-repo.git", "")
 	assert.NoError(t, err)
 }
 

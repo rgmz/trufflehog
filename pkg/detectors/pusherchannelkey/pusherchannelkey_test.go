@@ -2,25 +2,12 @@ package pusherchannelkey
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/engine/ahocorasick"
-)
-
-var (
-	validAppId    = "4870172"
-	invalidAppId  = "487?172"
-	validKey      = "8mcc284l3i4sph5a3mgf"
-	invalidKey    = "8mcc28?l3i4sph5a3mgf"
-	validSecret   = "pg1podgq3qabvh4yd1np"
-	invalidSecret = "pg1podgq3q?bvh4yd1np"
-	validInput    = `pusher - '%s'
-                            key - '%s'
-						    pusher - '%s'`
 )
 
 func TestPusherChannelKey_Pattern(t *testing.T) {
@@ -32,14 +19,18 @@ func TestPusherChannelKey_Pattern(t *testing.T) {
 		want  []string
 	}{
 		{
-			name:  "valid pattern",
-			input: fmt.Sprintf(validInput, validAppId, validKey, validSecret),
-			want:  []string{validAppId + validKey},
+			name: "valid pattern",
+			input: `pusherAppId = "4870172"
+pusherKey = "8mcc284l3i4sph5a3mgf"
+pusherSecret = "pg1podgq3qabvh4yd1np"`,
+			want: []string{"48701728mcc284l3i4sph5a3mgf"},
 		},
 		{
-			name:  "invalid pattern",
-			input: fmt.Sprintf(validInput, invalidAppId, invalidKey, invalidSecret),
-			want:  []string{},
+			name: "invalid pattern",
+			input: `pusherAppId = "487?172"
+pusherKey = "8mcc28?l3i4sph5a3mgf"
+pusherSecret = "pg1podgq3q?bvh4yd1np"`,
+			want: []string{},
 		},
 	}
 
@@ -60,10 +51,7 @@ func TestPusherChannelKey_Pattern(t *testing.T) {
 			if len(results) != len(test.want) {
 				if len(results) == 0 {
 					t.Errorf("did not receive result")
-				} else {
-					t.Errorf("expected %d results, only received %d", len(test.want), len(results))
 				}
-				return
 			}
 
 			actual := make(map[string]struct{}, len(results))

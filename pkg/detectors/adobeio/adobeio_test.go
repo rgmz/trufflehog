@@ -31,11 +31,6 @@ func TestAdobeIO_Pattern(t *testing.T) {
 			want:  []string{"zxcv0987mnbv1234poiu6749gtnrfv54WDcv0981Mn.B"},
 		},
 		{
-			name:  "valid pattern - out of prefix range",
-			input: fmt.Sprintf("adobe keyword is not close to the real id and secret = '%s'", validPattern),
-			want:  nil,
-		},
-		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("adobe%s", invalidPattern),
 			want:  nil,

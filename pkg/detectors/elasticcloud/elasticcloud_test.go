@@ -1,4 +1,4 @@
-package disqus
+package elasticcloud
 
 import (
 	"context"
@@ -10,41 +10,34 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/engine/ahocorasick"
 )
 
-var (
-	validPattern = `
-		# Configuration File: config.yaml
-		database:
-			host: $DB_HOST
-			port: $DB_PORT
-			username: $DB_USERNAME
-			password: $DB_PASS  # IMPORTANT: Do not share this password publicly
-
-		api:
-			auth_type: "API-Key"
-			in: "Path"
-			base_url: "https://api.disqus.com/v3/example?token=T7YaiuviPyYp8WyWlJ9lqQLI5oPirYMcfDYLPY7NAqxAr3872ovqq9AOVU3RcPUB"
-			response_code: 200
-
-		# Notes:
-		# - Remember to rotate the secret every 90 days.
-		# - The above credentials should only be used in a secure environment.
-	`
-	secret = "T7YaiuviPyYp8WyWlJ9lqQLI5oPirYMcfDYLPY7NAqxAr3872ovqq9AOVU3RcPUB"
-)
-
-func TestDisqus_Pattern(t *testing.T) {
+func TestElasticCloud_Pattern(t *testing.T) {
 	d := Scanner{}
 	ahoCorasickCore := ahocorasick.NewAhoCorasickCore([]detectors.Detector{d})
-
 	tests := []struct {
 		name  string
 		input string
 		want  []string
 	}{
 		{
-			name:  "valid pattern",
-			input: validPattern,
-			want:  []string{secret},
+			name:  "typical pattern",
+			input: "ELASTICCLOUD_KEY = essu_Y2pKSWVE5GToYU9UWmYYYT0VR6VmFRVUpETFlJ9AAA1ZKUk5rZElObEpcxcWVTMU1ibGhQZUdzNk5EWXY1dAAITurr4=",
+			want:  []string{"essu_Y2pKSWVE5GToYU9UWmYYYT0VR6VmFRVUpETFlJ9AAA1ZKUk5rZElObEpcxcWVTMU1ibGhQZUdzNk5EWXY1dAAITurr4="},
+		},
+
+		// Invalid
+		{
+			name:  "invalid - low entropy",
+			input: `essu_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`,
+		},
+		{
+			name: "invalid - incorrect case",
+			input: `      "source": [
+        "#### Anaconda\n",
+        "![](https://2.bp.blogspot.com/-lOwzj1e6RpU/Wf1Kx1Ovl5I/AAAAAAAAAJY/esSu_peLFHEfxXmlnSVgTZoOHLFR2GHFgCLcBGAs/s1600/Capture2.PNG)\n",
+        "\n",
+        "- Где скачать: [официальный сайт](https://www.anaconda.com/download/).\n",
+        "- Как поставить: действовать по инструкции, описанной [там же](https://docs.anaconda.com/anaconda/install/)."
+      ],`,
 		},
 	}
 

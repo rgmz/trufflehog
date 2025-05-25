@@ -20,7 +20,6 @@ type Scanner struct {
 var _ detectors.Detector = (*Scanner)(nil)
 
 var (
-	defaultClient = common.SaneHttpClient()
 	keyPat = regexp.MustCompile(detectors.PrefixRegex([]string{"bing"}) + `\b([a-fA-F0-9]{32})\b`)
 )
 
@@ -33,7 +32,11 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 
 	uniqueMatches := make(map[string]struct{})
 	for _, match := range keyPat.FindAllStringSubmatch(dataStr, -1) {
-		uniqueMatches[match[1]] = struct{}{}
+		m := match[1]
+		if detectors.StringShannonEntropy(m) < 3 {
+			continue
+		}
+		uniqueMatches[m] = struct{}{}
 	}
 
 	for match := range uniqueMatches {
@@ -43,12 +46,11 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 		}
 
 		if verify {
-			client := s.client
-			if client == nil {
-				client = defaultClient
+			if s.client == nil {
+				s.client = common.SaneHttpClient()
 			}
 
-			isVerified, verificationErr := verifyMatch(ctx, client, match)
+			isVerified, verificationErr := verifyMatch(ctx, s.client, match)
 			s1.Verified = isVerified
 			s1.SetVerificationError(verificationErr, match)
 		}

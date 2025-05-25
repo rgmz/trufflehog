@@ -23,13 +23,13 @@ var _ detectors.Detector = (*Scanner)(nil)
 
 var (
 	defaultClient = common.SaneHttpClient()
-	keyPat        = regexp.MustCompile(detectors.PrefixRegex([]string{"dropbox"}) + `\b(sl\.(u\.)?[A-Za-z0-9\-\_]{130,})\b`)
+	keyPat        = regexp.MustCompile(`\b(sl\.(u\.)?[A-Za-z0-9\-\_]{130,})\b`)
 )
 
 // Keywords are used for efficiently pre-filtering chunks.
 // Use identifiers in the secret preferably, or the provider name.
 func (s Scanner) Keywords() []string {
-	return []string{"dropbox", "sl."}
+	return []string{"sl."}
 }
 
 // FromData will find and optionally verify Dropbox secrets in a given set of bytes.
@@ -37,9 +37,12 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 	dataStr := string(data)
 
 	var uniqueKeys = make(map[string]struct{})
-
 	for _, matches := range keyPat.FindAllStringSubmatch(dataStr, -1) {
-		uniqueKeys[matches[1]] = struct{}{}
+		m := matches[1]
+		if detectors.StringShannonEntropy(m) < 3 {
+			continue
+		}
+		uniqueKeys[m] = struct{}{}
 	}
 
 	for key := range uniqueKeys {

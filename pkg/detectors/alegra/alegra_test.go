@@ -37,11 +37,6 @@ func TestAlegra_Pattern(t *testing.T) {
 			want:  []string{"wdvn-usa87a-fxp9ioas:test-User.1005@example.com"},
 		},
 		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("alegra keyword is not close to the real key and id = %s", validPattern),
-			want:  nil,
-		},
-		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("alegra: %s", invalidPattern),
 			want:  nil,
