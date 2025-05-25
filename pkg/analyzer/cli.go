@@ -13,9 +13,12 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/anthropic"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/asana"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/bitbucket"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/databricks"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/digitalocean"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/dockerhub"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/dropbox"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/elevenlabs"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/fastly"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/figma"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/github"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/gitlab"
@@ -24,13 +27,18 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/launchdarkly"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/mailchimp"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/mailgun"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/monday"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/mux"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/mysql"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/netlify"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/ngrok"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/notion"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/openai"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/opsgenie"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/plaid"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/planetscale"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/postgres"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/posthog"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/postman"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/privatekey"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/sendgrid"
@@ -156,6 +164,24 @@ func Run(cmd string) {
 		figma.AnalyzeAndPrintPermissions(cfg, key)
 	case "plaid":
 		parts := strings.SplitN(key, ":", 2)
-		plaid.AnalyzeAndPrintPermissions(cfg, parts[0], parts[1], parts[3])
+		plaid.AnalyzeAndPrintPermissions(cfg, parts[0], parts[1], parts[2])
+	case "netlify":
+		netlify.AnalyzeAndPrintPermissions(cfg, key)
+	case "fastly":
+		fastly.AnalyzeAndPrintPermissions(cfg, key)
+	case "monday":
+		monday.AnalyzeAndPrintPermissions(cfg, key)
+	case "ngrok":
+		ngrok.AnalyzeAndPrintPermissions(cfg, key)
+	case "mux":
+		parts := strings.SplitN(key, ":", 2)
+		mux.AnalyzeAndPrintPermissions(cfg, parts[0], parts[1])
+	case "posthog":
+		posthog.AnalyzeAndPrintPermissions(cfg, key)
+	case "dropbox":
+		dropbox.AnalyzeAndPrintPermissions(cfg, key)
+	case "databricks":
+		parts := strings.SplitN(key, ":", 2)
+		databricks.AnalyzeAndPrintPermissions(cfg, parts[0], parts[1])
 	}
 }
