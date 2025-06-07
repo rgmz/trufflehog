@@ -91,6 +91,7 @@ type Config struct {
 	// also serves as a multiplier for other worker types (e.g., detector workers, notifier workers)
 	Concurrency int
 
+	ConfiguredSources             []sources.ConfiguredSource
 	Decoders                      []decoders.Decoder
 	Detectors                     []detectors.Detector
 	DetectorVerificationOverrides map[config.DetectorID]bool
@@ -501,6 +502,17 @@ func (e *Engine) initialize(ctx context.Context) error {
 
 const ignoreTag = "trufflehog:ignore"
 
+// AhoCorasickCoreKeywords returns a set of keywords that the engine's
+// AhoCorasickCore is using.
+func (e *Engine) AhoCorasickCoreKeywords() map[string]struct{} {
+	// Turn AhoCorasick keywordsToDetectors into a map of keywords
+	keywords := make(map[string]struct{})
+	for key := range e.AhoCorasickCore.KeywordsToDetectors() {
+		keywords[key] = struct{}{}
+	}
+	return keywords
+}
+
 // HasFoundResults returns true if any results are found.
 func (e *Engine) HasFoundResults() bool {
 	return atomic.LoadUint32(&e.numFoundResults) > 0
@@ -731,13 +743,11 @@ func (e *Engine) scannerWorker(ctx context.Context) {
 
 		scanBytesPerChunk.Observe(dataSize)
 		jobBytesScanned.WithLabelValues(
-			strconv.Itoa(int(chunk.JobID)),
 			chunk.SourceType.String(),
 			chunk.SourceName,
 		).Add(dataSize)
 		chunksScannedLatency.Observe(float64(time.Since(startTime).Microseconds()))
 		jobChunksScanned.WithLabelValues(
-			strconv.Itoa(int(chunk.JobID)),
 			chunk.SourceType.String(),
 			chunk.SourceName,
 		).Inc()

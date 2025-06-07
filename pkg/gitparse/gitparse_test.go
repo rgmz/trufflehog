@@ -789,7 +789,7 @@ func TestCommitParsing(t *testing.T) {
 
 	r := bytes.NewReader([]byte(commitLog))
 	diffChan := make(chan *Diff)
-	parser := NewParser()
+	parser := NewParser(WithMaxCommitSize(10 * 10))
 	go func() {
 		parser.FromReader(context.Background(), r, diffChan, false)
 	}()
@@ -1426,7 +1426,7 @@ index 0000000..5af88a8
 `
 
 func TestMaxDiffSize(t *testing.T) {
-	parser := NewParser()
+	parser := NewParser(WithMaxDiffSize(10 * 10))
 	builder := strings.Builder{}
 	builder.WriteString(singleCommitSingleDiff)
 

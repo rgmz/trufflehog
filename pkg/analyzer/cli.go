@@ -24,6 +24,7 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/gitlab"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/groq"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/huggingface"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/jira"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/launchdarkly"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/mailchimp"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/mailgun"
@@ -163,7 +164,7 @@ func Run(cmd string) {
 	case "figma":
 		figma.AnalyzeAndPrintPermissions(cfg, key)
 	case "plaid":
-		parts := strings.SplitN(key, ":", 2)
+		parts := strings.SplitN(key, ":", 3)
 		plaid.AnalyzeAndPrintPermissions(cfg, parts[0], parts[1], parts[2])
 	case "netlify":
 		netlify.AnalyzeAndPrintPermissions(cfg, key)
@@ -183,5 +184,8 @@ func Run(cmd string) {
 	case "databricks":
 		parts := strings.SplitN(key, ":", 2)
 		databricks.AnalyzeAndPrintPermissions(cfg, parts[0], parts[1])
+	case "jira":
+		parts := strings.SplitN(key, ":", 3)
+		jira.AnalyzeAndPrintPermissions(cfg, parts[0], parts[1], parts[2])
 	}
 }
