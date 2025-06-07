@@ -31,12 +31,7 @@ func TestKeenIO_Pattern(t *testing.T) {
 			name:  "valid pattern - with keyword keenio",
 			input: fmt.Sprintf("%s '%s' %s '%s'", keyword, validKeyPattern, keyword, validIdPattern),
 			want:  []string{validKeyPattern},
-		},
-		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("%s keyword is not close to the real key in the data\n key = '%s' domain: '%s'", keyword, validKeyPattern, validIdPattern),
-			want:  []string{},
-		},
+},
 		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("%s key = '%s' %s secret = '%s'", keyword, invalidKeyPattern, keyword, invalidIdPattern),

@@ -45,17 +45,6 @@ func TestSmartsheets_Pattern(t *testing.T) {
 			want: []string{"MVE7zmdxouvunFAKELzaudyX7tvMpkqJ3q52d"},
 		},
 		{
-			name: "valid pattern - key out of prefix range",
-			input: `
-			# below is the smartsheet secret
-			# use this secret to list sheets
-			# do not share this
-
-			sslist := listAll("MVE7zmdxouvunFAKELzaudyX7tvMpkqJ3q52d")
-			`,
-			want: []string{},
-		},
-		{
 			name: "invalid pattern",
 			input: `
 			# smartsheet secret

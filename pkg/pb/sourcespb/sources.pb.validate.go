@@ -2552,6 +2552,8 @@ func (m *GitHub) validate(all bool) error {
 
 	// no validation rules for RemoveAuthInUrl
 
+	// no validation rules for CloneDirectory
+
 	switch v := m.Credential.(type) {
 	case *GitHub_GithubApp:
 		if v == nil {

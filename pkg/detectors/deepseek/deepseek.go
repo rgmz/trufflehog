@@ -25,13 +25,13 @@ var _ detectors.Detector = (*Scanner)(nil)
 var (
 	defaultClient = common.SaneHttpClient()
 
-	keyPat = regexp.MustCompile(detectors.PrefixRegex([]string{"deepseek"}) + `\b(sk-[a-z0-9]{32})\b`)
+	keyPat = regexp.MustCompile(`\b(sk-[a-z0-9]{32})\b`)
 )
 
 // Keywords are used for efficiently pre-filtering chunks.
 // Use identifiers in the secret preferably, or the provider name.
 func (s Scanner) Keywords() []string {
-	return []string{"deepseek"}
+	return []string{"sk-"}
 }
 
 // FromData will find and optionally verify DeepSeek secrets in a given set of bytes.

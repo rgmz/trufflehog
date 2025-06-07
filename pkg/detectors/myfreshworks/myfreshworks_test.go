@@ -33,11 +33,6 @@ func TestMyfreshworks_Pattern(t *testing.T) {
 			want:  []string{validKeyPattern},
 		},
 		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("%s keyword is not close to the real key in the data\n = '%s' '%s'", keyword, validKeyPattern, validIdPattern),
-			want:  []string{},
-		},
-		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("%s key = '%s' url = '%s'", keyword, invalidKeyPattern, invalidIdPattern),
 			want:  []string{},

@@ -315,6 +315,8 @@ type GithubConfig struct {
 	CommentsTimeframeDays uint32
 	// AuthInUrl determines wether to use authentication token in repository url or in header.
 	AuthInUrl bool
+	// CloneDirectory if specified will clone the repositories to a specific place.
+	CloneDirectory string
 }
 
 // GitHubExperimentalConfig defines the optional configuration for an experimental GitHub source.

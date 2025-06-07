@@ -22,7 +22,7 @@ var _ detectors.Versioner = (*Scanner)(nil)
 
 var (
 	client = common.SaneHttpClient()
-	keyPat = regexp.MustCompile(detectors.PrefixRegex([]string{"netlify"}) + `\b(nfp_[a-zA-Z0-9_]{36})\b`)
+	keyPat = regexp.MustCompile(`\b(nfp_[a-zA-Z0-9_]{36})\b`)
 )
 
 const (
@@ -35,7 +35,7 @@ func (Scanner) Version() int { return 2 }
 // Keywords are used for efficiently pre-filtering chunks.
 // Use identifiers in the secret preferably, or the provider name.
 func (s Scanner) Keywords() []string {
-	return []string{"netlify"}
+	return []string{"nfp_"}
 }
 
 // FromData will find and optionally verify Netlify secrets in a given set of bytes.
@@ -43,9 +43,12 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 	dataStr := string(data)
 
 	uniqueMatches := make(map[string]struct{})
-
 	for _, match := range keyPat.FindAllStringSubmatch(dataStr, -1) {
-		uniqueMatches[match[1]] = struct{}{}
+		m := match[1]
+		if detectors.StringShannonEntropy(m) < 3 {
+			continue
+		}
+		uniqueMatches[m] = struct{}{}
 	}
 
 	for match := range uniqueMatches {
@@ -97,7 +100,8 @@ func verifyMatch(ctx context.Context, client *http.Client, token string) (bool, 
 	case http.StatusUnauthorized:
 		return false, nil
 	default:
-		return false, fmt.Errorf("unexpected HTTP response status %d", res.StatusCode)
+		body, _ := io.ReadAll(res.Body)
+		return false, fmt.Errorf("unexpected response %d: %q", res.StatusCode, string(body))
 	}
 }
 

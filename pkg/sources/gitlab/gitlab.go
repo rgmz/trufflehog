@@ -651,7 +651,7 @@ func (s *Source) scanRepos(ctx context.Context, chunksChan chan *sources.Chunk) 
 			var repo *gogit.Repository
 			var err error
 			if s.authMethod == "UNAUTHENTICATED" {
-				path, repo, err = git.CloneRepoUsingUnauthenticated(ctx, repoURL)
+				path, repo, err = git.CloneRepoUsingUnauthenticated(ctx, repoURL, "")
 			} else {
 				// If a username is not provided we need to use a default one in order to clone a private repo.
 				// Not setting "placeholder" as s.user on purpose in case any downstream services rely on a "" value for s.user.
@@ -659,8 +659,7 @@ func (s *Source) scanRepos(ctx context.Context, chunksChan chan *sources.Chunk) 
 				if user == "" {
 					user = "placeholder"
 				}
-
-				path, repo, err = git.CloneRepoUsingToken(ctx, s.token, repoURL, user, s.useAuthInUrl)
+				path, repo, err = git.CloneRepoUsingToken(ctx, s.token, repoURL, "", user, s.useAuthInUrl)
 			}
 			if err != nil {
 				scanErrs.Add(err)
@@ -835,7 +834,7 @@ func (s *Source) ChunkUnit(ctx context.Context, unit sources.SourceUnit, reporte
 	var repo *gogit.Repository
 	var err error
 	if s.authMethod == "UNAUTHENTICATED" {
-		path, repo, err = git.CloneRepoUsingUnauthenticated(ctx, repoURL)
+		path, repo, err = git.CloneRepoUsingUnauthenticated(ctx, repoURL, "")
 	} else {
 		// If a username is not provided we need to use a default one in order to clone a private repo.
 		// Not setting "placeholder" as s.user on purpose in case any downstream services rely on a "" value for s.user.
@@ -843,8 +842,7 @@ func (s *Source) ChunkUnit(ctx context.Context, unit sources.SourceUnit, reporte
 		if user == "" {
 			user = "placeholder"
 		}
-
-		path, repo, err = git.CloneRepoUsingToken(ctx, s.token, repoURL, user, s.useAuthInUrl)
+		path, repo, err = git.CloneRepoUsingToken(ctx, s.token, repoURL, "", user, s.useAuthInUrl)
 	}
 	if err != nil {
 		return err

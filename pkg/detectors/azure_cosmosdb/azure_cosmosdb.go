@@ -27,7 +27,7 @@ type Scanner struct {
 var (
 	defaultClient = common.SaneHttpClient()
 
-	dbKeyPattern = regexp.MustCompile(detectors.PrefixRegex([]string{"azure", "cosmos"}) + `([A-Za-z0-9]{86}==)`)
+	dbKeyPattern = regexp.MustCompile(`([A-Za-z0-9]{86}==)`)
 	// account name can contain only lowercase letters, numbers and the `-` character, must be between 3 and 44 characters long.
 	accountUrlPattern = regexp.MustCompile(`([a-z0-9-]{3,44}\.(?:documents|table\.cosmos)\.azure\.com)`)
 
@@ -65,7 +65,11 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 	var uniqueKeyMatches, uniqueAccountMatches = make(map[string]struct{}), make(map[string]struct{})
 
 	for _, match := range dbKeyPattern.FindAllStringSubmatch(dataStr, -1) {
-		uniqueKeyMatches[match[1]] = struct{}{}
+		m := match[1]
+		if detectors.StringShannonEntropy(m) < 3 {
+			continue
+		}
+		uniqueKeyMatches[m] = struct{}{}
 	}
 
 	for _, match := range accountUrlPattern.FindAllStringSubmatch(dataStr, -1) {

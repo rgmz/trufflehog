@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
 	regexp "github.com/wasilibs/go-re2"
 
@@ -64,7 +63,7 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 	}
 
 	for _, email := range emailPat.FindAllStringSubmatch(dataStr, -1) {
-		uniqueEmails[strings.ToLower(email[1])] = struct{}{}
+		uniqueEmails[email[1]] = struct{}{}
 	}
 
 	if len(uniqueDomains) == 0 {
