@@ -25,14 +25,15 @@ set PATH=%PATH%;C:\Program Files\nodejs\;C:\Program Files\Git\cmd`,
 			want: []string{"885953dc-2469-443c-983d-5243d2d54116"},
 		},
 		// https://docs.snyk.io/snyk-api/get-a-projects-sbom-document-endpoint#how-to-generate-the-sbom-for-a-project
-		//	{
-		//		name: "curl example",
-		//		`curl --get \
-		// -H "Authorization: token ccc9ae71-913f-46bd-9d23-03356323400a" \
-		// --data-urlencode "version=2023-03-20" \
-		// --data-urlencode "format=cyclonedx1.4%2Bjson" \
-		// https://api.snyk.io/rest/orgs/1234/projects/1234/sbom`,
-		//	},
+		{
+			name: "suffix example",
+			input: `curl --get \
+		-H "Authorization: token ccc9ae71-913f-46bd-9d23-03356323400a" \
+		--data-urlencode "version=2023-03-20" \
+		--data-urlencode "format=cyclonedx1.4%2Bjson" \
+		https://api.snyk.io/rest/orgs/1234/projects/1234/sbom`,
+			want: []string{"ccc9ae71-913f-46bd-9d23-03356323400a"},
+		},
 	}
 
 	for _, test := range tests {

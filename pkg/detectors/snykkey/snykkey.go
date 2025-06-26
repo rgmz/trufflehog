@@ -22,7 +22,7 @@ type Scanner struct {
 // Ensure the Scanner satisfies the interface at compile time.
 var _ detectors.Detector = (*Scanner)(nil)
 
-var keyPat = regexp.MustCompile(detectors.PrefixRegex([]string{"snyk"}) + `\b([0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{12})\b`)
+var keyPat = regexp.MustCompile(detectors.PrefixOrSuffixRegex([]string{"snyk"}, `\b([0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{12})\b`))
 
 // Keywords are used for efficiently pre-filtering chunks.
 // Use identifiers in the secret preferably, or the provider name.
@@ -36,7 +36,11 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 
 	tokens := make(map[string]struct{})
 	for _, match := range keyPat.FindAllStringSubmatch(dataStr, -1) {
-		tokens[match[1]] = struct{}{}
+		m := detectors.FirstNonEmptyMatch(match)
+		if detectors.StringShannonEntropy(m) < 3 {
+			continue
+		}
+		tokens[m] = struct{}{}
 	}
 
 	for token := range tokens {
