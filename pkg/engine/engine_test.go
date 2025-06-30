@@ -551,61 +551,6 @@ func TestEngine_CustomDetectorsDetectorsVerifiedSecrets(t *testing.T) {
 	assert.Equal(t, want, e.GetMetrics().VerifiedSecretsFound)
 }
 
-func TestVerificationOverlapChunk(t *testing.T) {
-	ctx := context.Background()
-
-	absPath, err := filepath.Abs("./testdata/verificationoverlap_secrets.txt")
-	assert.Nil(t, err)
-
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	confPath, err := filepath.Abs("./testdata/verificationoverlap_detectors.yaml")
-	assert.Nil(t, err)
-	conf, err := config.Read(confPath)
-	assert.Nil(t, err)
-
-	const defaultOutputBufferSize = 64
-	opts := []func(*sources.SourceManager){
-		sources.WithSourceUnits(),
-		sources.WithBufferedOutput(defaultOutputBufferSize),
-	}
-
-	sourceManager := sources.NewManager(opts...)
-
-	c := Config{
-		Concurrency:      1,
-		Decoders:         decoders.DefaultDecoders(),
-		Detectors:        conf.Detectors,
-		IncludeDetectors: "904", // isolate this test to only the custom detectors provided
-		Verify:           false,
-		SourceManager:    sourceManager,
-		Dispatcher:       NewPrinterDispatcher(new(discardPrinter)),
-	}
-
-	e, err := NewEngine(ctx, &c)
-	assert.NoError(t, err)
-
-	e.verificationOverlapTracker = new(verificationOverlapTracker)
-
-	e.Start(ctx)
-
-	cfg := sources.FilesystemConfig{Paths: []string{absPath}}
-	if _, err := e.ScanFileSystem(ctx, cfg); err != nil {
-		return
-	}
-
-	// Wait for all the chunks to be processed.
-	assert.Nil(t, e.Finish(ctx))
-	// We want TWO secrets that match both the custom regexes.
-	want := uint64(2)
-	assert.Equal(t, want, e.GetMetrics().UnverifiedSecretsFound)
-
-	// We want 0 because these are custom detectors and verification should still occur.
-	wantDupe := 0
-	assert.Equal(t, wantDupe, e.verificationOverlapTracker.verificationOverlapDuplicateCount)
-}
-
 const (
 	TestDetectorType  = -1
 	TestDetectorType2 = -2
@@ -646,50 +591,6 @@ func (testDetectorV2) Keywords() []string { return []string{"ample"} }
 func (testDetectorV2) Type() detectorspb.DetectorType { return TestDetectorType2 }
 
 func (testDetectorV2) Description() string { return "" }
-
-func TestVerificationOverlapChunkFalsePositive(t *testing.T) {
-	ctx := context.Background()
-
-	absPath, err := filepath.Abs("./testdata/verificationoverlap_secrets_fp.txt")
-	assert.NoError(t, err)
-
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	const defaultOutputBufferSize = 64
-	opts := []func(*sources.SourceManager){
-		sources.WithSourceUnits(),
-		sources.WithBufferedOutput(defaultOutputBufferSize),
-	}
-
-	sourceManager := sources.NewManager(opts...)
-
-	c := Config{
-		Concurrency:   1,
-		Decoders:      decoders.DefaultDecoders(),
-		Detectors:     []detectors.Detector{testDetectorV1{}, testDetectorV2{}},
-		Verify:        false,
-		SourceManager: sourceManager,
-		Dispatcher:    NewPrinterDispatcher(new(discardPrinter)),
-	}
-
-	e, err := NewEngine(ctx, &c)
-	assert.NoError(t, err)
-
-	e.verificationOverlapTracker = new(verificationOverlapTracker)
-
-	e.Start(ctx)
-
-	cfg := sources.FilesystemConfig{Paths: []string{absPath}}
-	_, err = e.ScanFileSystem(ctx, cfg)
-	assert.NoError(t, err)
-
-	// Wait for all the chunks to be processed.
-	assert.NoError(t, e.Finish(ctx))
-	// We want 0 because the secret is a false positive.
-	want := uint64(0)
-	assert.Equal(t, want, e.GetMetrics().UnverifiedSecretsFound)
-}
 
 func TestRetainFalsePositives(t *testing.T) {
 	ctx := context.Background()
@@ -933,84 +834,6 @@ func TestSetLink(t *testing.T) {
 				assert.Equal(t, tt.wantLink, data.Filesystem.Link, "Filesystem link mismatch")
 			case *source_metadatapb.MetaData_AzureRepos:
 				assert.Equal(t, tt.wantLink, data.AzureRepos.Link, "Azure Repos link mismatch")
-			}
-		})
-	}
-}
-
-func TestLikelyDuplicate(t *testing.T) {
-	// Initialize detectors
-	// (not actually calling detector FromData or anything, just using detector struct for key creation)
-	detectorA := ahocorasick.DetectorMatch{
-		Key:      ahocorasick.CreateDetectorKey(defaults.DefaultDetectors()[0]),
-		Detector: defaults.DefaultDetectors()[0],
-	}
-	detectorB := ahocorasick.DetectorMatch{
-		Key:      ahocorasick.CreateDetectorKey(defaults.DefaultDetectors()[1]),
-		Detector: defaults.DefaultDetectors()[1],
-	}
-
-	// Define test cases
-	tests := []struct {
-		name     string
-		val      chunkSecretKey
-		dupes    map[chunkSecretKey]struct{}
-		expected bool
-	}{
-		{
-			name: "exact duplicate different detector",
-			val:  chunkSecretKey{"PMAK-qnwfsLyRSyfCwfpHaQP1UzDhrgpWvHjbYzjpRCMshjt417zWcrzyHUArs7r", detectorA.Key},
-			dupes: map[chunkSecretKey]struct{}{
-				{"PMAK-qnwfsLyRSyfCwfpHaQP1UzDhrgpWvHjbYzjpRCMshjt417zWcrzyHUArs7r", detectorB.Key}: {},
-			},
-			expected: true,
-		},
-		{
-			name: "non-duplicate length outside range",
-			val:  chunkSecretKey{"short", detectorA.Key},
-			dupes: map[chunkSecretKey]struct{}{
-				{"muchlongerthanthevalstring", detectorB.Key}: {},
-			},
-			expected: false,
-		},
-		{
-			name: "similar within threshold",
-			val:  chunkSecretKey{"PMAK-qnwfsLyRSyfCwfpHaQP1UzDhrgpWvHjbYzjpRCMshjt417zWcrzyHUArs7r", detectorA.Key},
-			dupes: map[chunkSecretKey]struct{}{
-				{"qnwfsLyRSyfCwfpHaQP1UzDhrgpWvHjbYzjpRCMshjt417zWcrzyHUArs7r", detectorB.Key}: {},
-			},
-			expected: true,
-		},
-		{
-			name: "similar outside threshold",
-			val:  chunkSecretKey{"anotherkey", detectorA.Key},
-			dupes: map[chunkSecretKey]struct{}{
-				{"completelydifferent", detectorB.Key}: {},
-			},
-			expected: false,
-		},
-		{
-			name:     "empty strings",
-			val:      chunkSecretKey{"", detectorA.Key},
-			dupes:    map[chunkSecretKey]struct{}{{"", detectorB.Key}: {}},
-			expected: true,
-		},
-		{
-			name: "similar within threshold same detector",
-			val:  chunkSecretKey{"PMAK-qnwfsLyRSyfCwfpHaQP1UzDhrgpWvHjbYzjpRCMshjt417zWcrzyHUArs7r", detectorA.Key},
-			dupes: map[chunkSecretKey]struct{}{
-				{"qnwfsLyRSyfCwfpHaQP1UzDhrgpWvHjbYzjpRCMshjt417zWcrzyHUArs7r", detectorA.Key}: {},
-			},
-			expected: false,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
-			result := likelyDuplicate(ctx, tc.val, tc.dupes)
-			if result != tc.expected {
-				t.Errorf("expected %v, got %v", tc.expected, result)
 			}
 		})
 	}

@@ -122,7 +122,7 @@ func main() {
 				for chunk := range chunksChan {
 					for name, scanner := range selectedScanners {
 						for _, dec := range allDecoders {
-							decoded := dec.FromChunk(&sources.Chunk{Data: chunk.Data})
+							decoded := dec.FromChunk(ctx, &sources.Chunk{Data: chunk.Data})
 							if decoded != nil {
 								foundKeyword := false
 								for _, kw := range scanner.Keywords() {
@@ -181,7 +181,7 @@ func main() {
 				defer sem.Release(1)
 				defer wgChunkers.Done()
 				logger.Info("cloning repo", "repo", r)
-				path, repo, err := git.CloneRepoUsingUnauthenticated(ctx, r)
+				path, repo, err := git.CloneRepoUsingUnauthenticated(ctx, r, "")
 				if err != nil {
 					logFatal(err, "error cloning repo", "repo", r)
 				}

@@ -258,6 +258,7 @@ message GitHub {
   bool include_wikis = 19;
   uint32 comments_timeframe_days = 20;
   bool remove_auth_in_url = 21;
+  string clone_directory = 22;
 }
 
 message GitHubExperimental {

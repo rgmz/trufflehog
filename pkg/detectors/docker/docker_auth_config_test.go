@@ -86,6 +86,11 @@ func TestDocker_Pattern(t *testing.T) {
 			want:  []string{`{"registry":"index.docker.io","auth":"dHJ1ZmZsZWhvZzpiZDQyNzQ2Yy1hNzc3LTQ4ZDktYjBhMi04N2I2YzEzMjdkMDA="}`},
 		},
 		{
+			name:  "docker.io v1 registry",
+			input: `echo '{"auths": {"https://index.docker.io/v1/": {"auth": "ZG9ja2VyOmRja3JfcGF0X0FqNWdCMV82dWVfbFZpbUJQS08="}}, "http": null}' > ~/.docker/config.json`,
+			want:  []string{`{"registry":"https://index.docker.io/v1/","auth":"ZG9ja2VyOmRja3JfcGF0X0FqNWdCMV82dWVfbFZpbUJQS08="}`},
+		},
+		{
 			name:  "registry with slashes",
 			input: `{"auths":{"https://index.docker.io/v2/":{"auth": "dHJ1ZmZsZWhvZzpiZDQyNzQ2Yy1hNzc3LTQ4ZDktYjBhMi04N2I2YzEzMjdkMDA="}}}`,
 			want:  []string{`{"registry":"https://index.docker.io/v2/","auth":"dHJ1ZmZsZWhvZzpiZDQyNzQ2Yy1hNzc3LTQ4ZDktYjBhMi04N2I2YzEzMjdkMDA="}`},

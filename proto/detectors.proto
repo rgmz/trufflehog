@@ -10,6 +10,8 @@ enum DecoderType {
   BASE64 = 2;
   UTF16 = 3;
   ESCAPED_UNICODE = 4;
+  HTML = 5;
+  PERCENT = 6;
 }
 
 enum DetectorType {
@@ -1037,6 +1039,7 @@ enum DetectorType {
   AzureAppConfigConnectionString = 1025;
   DeepSeek = 1026;
   StripePaymentIntent = 1027;
+  ElasticCloud = 1028;
 }
 
 message Result {

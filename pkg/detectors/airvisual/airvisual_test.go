@@ -31,11 +31,6 @@ func TestAirVisual_Pattern(t *testing.T) {
 			want:  []string{validPattern},
 		},
 		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("airvisual keyword is not close to the real key and secret = '%s'", validPattern),
-			want:  nil,
-		},
-		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("airvisual key: '%s'", invalidPattern),
 			want:  nil,

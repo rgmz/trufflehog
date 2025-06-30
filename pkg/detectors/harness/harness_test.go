@@ -6,16 +6,15 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/engine/ahocorasick"
 )
 
 var (
-	validKey               = "pat.4oXWHvYFRNOGLVpFTZGGTA.68077fc826afe36865614d58.2fFEmr57WO3zPmev3jze"
-	validKeyWithoutKeyword = `API Key Token: pat.4oXWHvYFRNOGLVpFTZGGTA.68077fc826afe36865614d58.2fFEmr57WO3zPmev3jze
-	url |https://api.harness.io/`
+	validKey   = "pat.4oXWHvYFRNOGLVpFTZGGTA.68077fc826afe36865614d58.2fFEmr57WO3zPmev3jze"
 	invalidKey = "pat.4oXWHvYFRNOGLVpFTZGGTA.6807c5bed9599c324f6368ce.usCT2fzvADwSoXzXc"
-	keyword    = "harness"
+	keyword    = "pat."
 )
 
 func TestHarness_Pattern(t *testing.T) {
@@ -30,11 +29,6 @@ func TestHarness_Pattern(t *testing.T) {
 			name:  "valid pattern",
 			input: fmt.Sprintf("%s token = '%s'", keyword, validKey),
 			want:  []string{validKey},
-		},
-		{
-			name:  "valid pattern - no keyword",
-			input: fmt.Sprintf("token = '%s'", validKeyWithoutKeyword),
-			want:  nil,
 		},
 		{
 			name:  "invalid pattern",

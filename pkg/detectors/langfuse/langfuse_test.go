@@ -2,10 +2,12 @@ package langfuse
 
 import (
 	"context"
+	"testing"
+
 	"github.com/google/go-cmp/cmp"
+
 	"github.com/trufflesecurity/trufflehog/v3/pkg/detectors"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/engine/ahocorasick"
-	"testing"
 )
 
 func TestLangfuse_Pattern(t *testing.T) {
@@ -17,27 +19,25 @@ func TestLangfuse_Pattern(t *testing.T) {
 		want  []string
 	}{
 		{
-			name:  "typical pattern",
-			input: `langfuse_public_key = pk-lf-00000000-0000-0000-0000-000000000000
-                    langfuse_secret_key = sk-lf-00000000-0000-0000-0000-000000000000`,
-			want:  []string{"sk-lf-00000000-0000-0000-0000-000000000000"},
+			name: "typical pattern",
+			input: `langfuse_public_key = pk-lf-85bd9970-f7fd-4683-bdcb-e20563f405fc
+                    langfuse_secret_key = sk-lf-6ca47579-5a0e-4450-85c0-149f1eb3793c`,
+			want: []string{"sk-lf-6ca47579-5a0e-4450-85c0-149f1eb3793c"},
 		},
 		{
 			name: "finds all matches",
-			input: `langfuse_public_key1 = pk-lf-00000000-0000-0000-0000-000000000000
-                    langfuse_secret_key1 = sk-lf-00000000-0000-0000-0000-000000000000
-					langfuse_public_key2 = pk-lf-11111111-1111-1111-1111-111111111111
-                    langfuse_secret_key2 = sk-lf-11111111-1111-1111-1111-111111111111`,
-			want: []string{"sk-lf-00000000-0000-0000-0000-000000000000",
-			 "sk-lf-11111111-1111-1111-1111-111111111111",
-			 "sk-lf-11111111-1111-1111-1111-111111111111",
-			 "sk-lf-00000000-0000-0000-0000-000000000000"},
+			input: `langfuse_public_key1 = pk-lf-85bd9970-f7fd-4683-bdcb-e20563f405fc
+                    langfuse_secret_key1 = sk-lf-6ca47579-5a0e-4450-85c0-149f1eb3793c
+					langfuse_public_key2 = pk-lf-73efae6a-6638-4f78-889a-118db7852b51
+                    langfuse_secret_key2 = sk-lf-7227ec1f-eb60-4e8e-9893-315a96b4ce31`,
+			want: []string{"sk-lf-6ca47579-5a0e-4450-85c0-149f1eb3793c",
+				"sk-lf-7227ec1f-eb60-4e8e-9893-315a96b4ce31"},
 		},
 		{
-			name:  "invalid pattern",
+			name: "invalid pattern",
 			input: `langfuse_public_key1 = pk-lf-invalid
                     langfuse_secret_key1 = sk-lf-invalid`,
-			want:  []string{},
+			want: []string{},
 		},
 	}
 

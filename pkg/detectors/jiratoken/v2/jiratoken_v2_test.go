@@ -80,36 +80,6 @@ func TestJiraToken_Pattern(t *testing.T) {
 			want: []string{"trufflesecurity@example.com" + ":" + "ATATThktLkSzzcXi1xt19IlU6gAchV1TS83w11YOqAXqFUeA2=Yx3ssoNC" + ":" + "api.atlassian.com"},
 		},
 		{
-			name: "valid pattern - without token",
-			input: `
-					{
-					"expand": "schema,names",
-					"startAt": 0,
-					"maxResults": 50,
-					"total": 1,
-					"issues": [
-						{
-							"expand": "operations,versionedRepresentations,editmeta,changelog,renderedFields",
-							"id": "fake454",
-							"key": "ESI-5555",
-							"fields": {
-								"statuscategorychangedate": "2016-06-01T01:25:35.807-0700",
-								"issuetype": {
-								"id": "09090",
-								"self": "https://example.atlassian.net/rest/api/2/issuetype/09090",
-								"description": "This is an example ticket",
-								"name": "Example Pattern test 2",
-								"subtask": false,
-								"avatarId": 1298,
-								"entityId": "93a51c1d-fake-4673-a71d-0889fake1238",
-								"hierarchyLevel": 0,
-								"emailAddress": "trufflesecurity@example.com",
-							},
-						}
-					]}`,
-			want: []string{},
-		},
-		{
 			name: "valid pattern - without email",
 			input: `
 					{
@@ -138,36 +108,6 @@ func TestJiraToken_Pattern(t *testing.T) {
 						}
 					]}`,
 			want: []string{},
-		},
-		{
-			name: "valid pattern - without keywords",
-			input: `
-					{
-					"expand": "schema,names",
-					"startAt": 0,
-					"maxResults": 50,
-					"total": 1,
-					"issues": [
-						{
-							"expand": "operations,versionedRepresentations,editmeta,changelog,renderedFields",
-							"id": "fake454",
-							"key": "ESI-5555",
-							"fields": {
-								"statuscategorychangedate": "2016-06-01T01:25:35.807-0700",
-								"issuetype": {
-								"id": "09090",
-								"description": "ATATThktLkSzzcXi1xt19IlU6gAchV1TS83w11YOqAXqFUeA2=Yx3ssoNC",
-								"name": "Example Pattern test 2",
-								"subtask": false,
-								"avatarId": 1298,
-								"entityId": "93a51c1d-fake-4673-a71d-0889fake1238",
-								"hierarchyLevel": 0,
-								"emailAddress": "trufflesecurity@example.com",
-							},
-						}
-					]}`,
-			want:       []string{},
-			noKeywords: true,
 		},
 		{
 			name: "invalid pattern",

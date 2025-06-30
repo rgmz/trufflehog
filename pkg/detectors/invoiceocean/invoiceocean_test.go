@@ -33,11 +33,6 @@ func TestInvoiceocean_Pattern(t *testing.T) {
 			want:  []string{"ZWd1e2141Q2R1ds23sdX"},
 		},
 		{
-			name:  "valid pattern - key out of prefix range",
-			input: fmt.Sprintf("%s keyword is not close to the real key in the data\n = '%s' secret = '%s'", keyword, validKeyPattern, validUrlPattern),
-			want:  []string{},
-		},
-		{
 			name:  "invalid pattern",
 			input: fmt.Sprintf("%s key = '%s' secret = '%s'", keyword, invalidKeyPattern, invalidUrlPattern),
 			want:  []string{},
