@@ -14,6 +14,7 @@ import (
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/asana"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/bitbucket"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/databricks"
+	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/datadog"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/digitalocean"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/dockerhub"
 	"github.com/trufflesecurity/trufflehog/v3/pkg/analyzer/analyzers/dropbox"
@@ -172,6 +173,9 @@ func Run(cmd string) {
 		fastly.AnalyzeAndPrintPermissions(cfg, key)
 	case "monday":
 		monday.AnalyzeAndPrintPermissions(cfg, key)
+	case "datadog":
+		parts := strings.SplitN(key, ":", 2)
+		datadog.AnalyzeAndPrintPermissions(cfg, parts[0], parts[1])
 	case "ngrok":
 		ngrok.AnalyzeAndPrintPermissions(cfg, key)
 	case "mux":

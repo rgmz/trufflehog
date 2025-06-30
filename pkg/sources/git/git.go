@@ -64,16 +64,13 @@ type Git struct {
 	jobID              sources.JobID
 	sourceMetadataFunc func(file, email, commit, timestamp, repository string, line int64) *source_metadatapb.MetaData
 	verify             bool
-	metrics            metrics
+	metrics            metricsCollector
 	concurrency        *semaphore.Weighted
 	skipBinaries       bool
 	skipArchives       bool
+	repoCommitsScanned uint64 // Atomic counter for commits scanned in the current repo
 
 	parser *gitparse.Parser
-}
-
-type metrics struct {
-	commitsScanned uint64
 }
 
 // Config for a Git source.
@@ -114,6 +111,7 @@ func NewGit(config *Config) *Git {
 		jobID:              config.JobID,
 		sourceMetadataFunc: config.SourceMetadataFunc,
 		verify:             config.Verify,
+		metrics:            metricsInstance,
 		concurrency:        semaphore.NewWeighted(int64(config.Concurrency)),
 		skipBinaries:       config.SkipBinaries,
 		skipArchives:       config.SkipArchives,
@@ -428,6 +426,9 @@ func CloneRepo(ctx context.Context, userInfo *url.Userinfo, gitURL string, dir s
 		// DO NOT FORGET TO CLEAN UP THE CLONE PATH HERE!!
 		// If we don't, we'll end up with a bunch of orphaned directories in the temp dir.
 		CleanOnError(&err, clonePath)
+
+		// Note: We don't need to record the clone failure here as it's already
+		// recorded in executeClone when the error occurs
 		return "", nil, err
 	}
 
@@ -511,6 +512,10 @@ func executeClone(ctx context.Context, params cloneParams) (*git.Repository, err
 		return nil, fmt.Errorf("clone command exited with no output")
 	} else if cloneCmd.ProcessState.ExitCode() != 0 {
 		logger.Error(err, "git clone failed")
+		// Record the clone failure with the appropriate reason and exit code
+		failureReason := ClassifyCloneError(output)
+		exitCode := cloneCmd.ProcessState.ExitCode()
+		metricsInstance.RecordCloneOperation(statusFailure, failureReason, exitCode)
 		return nil, fmt.Errorf("could not clone repo: %s, %w", safeURL, err)
 	}
 
@@ -520,6 +525,9 @@ func executeClone(ctx context.Context, params cloneParams) (*git.Repository, err
 		return nil, fmt.Errorf("could not open cloned repo: %w", err)
 	}
 	logger.V(1).Info("successfully cloned repo")
+
+	// Record the successful clone operation
+	metricsInstance.RecordCloneOperation(statusSuccess, cloneSuccess, 0)
 
 	return repo, nil
 }
@@ -584,7 +592,18 @@ func PingRepoUsingToken(ctx context.Context, token, gitUrl, user string) error {
 	fakeRef := "TRUFFLEHOG_CHECK_GIT_REMOTE_URL_REACHABILITY"
 	gitArgs := []string{"ls-remote", lsUrl.String(), "--quiet", fakeRef}
 	cmd := exec.Command("git", gitArgs...)
-	_, err = cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		// Record the ping failure with the appropriate reason and exit code
+		failureReason := ClassifyCloneError(string(output))
+		exitCode := 0
+		if cmd.ProcessState != nil {
+			exitCode = cmd.ProcessState.ExitCode()
+		}
+		metricsInstance.RecordCloneOperation(statusFailure, failureReason, exitCode)
+	}
+
 	return err
 }
 
@@ -612,8 +631,9 @@ var codeCommitRE = regexp.MustCompile(`ssh://git-codecommit\.[\w-]+\.amazonaws\.
 
 func isCodeCommitURL(gitURL string) bool { return codeCommitRE.MatchString(gitURL) }
 
+// CommitsScanned returns the number of commits scanned
 func (s *Git) CommitsScanned() uint64 {
-	return atomic.LoadUint64(&s.metrics.commitsScanned)
+	return atomic.LoadUint64(&s.repoCommitsScanned)
 }
 
 const gitDirName = ".git"
@@ -693,7 +713,9 @@ func (s *Git) ScanCommits(ctx context.Context, repo *git.Repository, path string
 		if fullHash != lastCommitHash {
 			depth++
 			lastCommitHash = fullHash
-			atomic.AddUint64(&s.metrics.commitsScanned, 1)
+			s.metrics.RecordCommitScanned()
+			// Increment repo-specific commit counter
+			atomic.AddUint64(&s.repoCommitsScanned, 1)
 			logger.V(5).Info("scanning commit", "commit", fullHash)
 
 			// Scan the commit metadata.
@@ -935,7 +957,9 @@ func (s *Git) ScanStaged(ctx context.Context, repo *git.Repository, path string,
 		if fullHash != lastCommitHash {
 			depth++
 			lastCommitHash = fullHash
-			atomic.AddUint64(&s.metrics.commitsScanned, 1)
+			s.metrics.RecordCommitScanned()
+			// Increment repo-specific commit counter
+			atomic.AddUint64(&s.repoCommitsScanned, 1)
 		}
 
 		if reachedBase && fullHash != scanOptions.BaseHash {
@@ -1027,7 +1051,12 @@ func (s *Git) ScanRepo(ctx context.Context, repo *git.Repository, repoPath strin
 	}
 	start := time.Now().Unix()
 
+	// Reset the repo-specific commit counter
+	atomic.StoreUint64(&s.repoCommitsScanned, 0)
+
 	if err := s.ScanCommits(ctx, repo, repoPath, scanOptions, reporter); err != nil {
+		// Record that we've failed to scan this repo
+		s.metrics.RecordRepoScanned(statusFailure)
 		return err
 	}
 	if !scanOptions.Bare {
@@ -1035,6 +1064,9 @@ func (s *Git) ScanRepo(ctx context.Context, repo *git.Repository, repoPath strin
 			ctx.Logger().V(1).Info("error scanning unstaged changes", "error", err)
 		}
 	}
+
+	// Get the number of commits scanned in this repo
+	commitsScannedInRepo := atomic.LoadUint64(&s.repoCommitsScanned)
 
 	logger := ctx.Logger()
 	// We're logging time, but the repoPath is usually a dynamically generated folder in /tmp.
@@ -1054,8 +1086,11 @@ func (s *Git) ScanRepo(ctx context.Context, repo *git.Repository, repoPath strin
 		"scanning git repo complete",
 		"path", repoPath,
 		"time_seconds", scanTime,
-		"commits_scanned", atomic.LoadUint64(&s.metrics.commitsScanned),
+		"commits_scanned", commitsScannedInRepo,
 	)
+
+	// Record that we've scanned a repo successfully
+	s.metrics.RecordRepoScanned(statusSuccess)
 	return nil
 }
 
