@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"math/big"
 	"net/url"
 	"strings"
@@ -259,6 +260,27 @@ func PrefixRegex(keywords []string) string {
 	middle := strings.Join(keywords, "|")
 	post := `)(?:.{0,100}?|.*?(?:[\r\n]{1,2}.*?){1,15})`
 	return pre + middle + post
+}
+
+func PrefixOrSuffixRegex(keywords []string, pattern string) string {
+	prefixPat := `(?i:` + strings.Join(keywords, "|") + `)(?:.{0,100}?|.*?(?:[\r\n]{1,2}.*?){1,15})` + pattern
+	suffixPat := pattern + `(?:.{0,100}?|.*?(?:[\r\n]{1,2}.*?){0,15})` + `(?i:` + strings.Join(keywords, "|") + `)`
+
+	return fmt.Sprintf(`(?:%s|%s)`, prefixPat, suffixPat)
+}
+
+// FirstNonEmptyMatch returns the index and value of the first non-empty match.
+func FirstNonEmptyMatch(matches []string) string {
+	if len(matches) <= 1 {
+		return ""
+	}
+	// The first index is the entire matched string.
+	for _, val := range matches[1:] {
+		if val != "" {
+			return val
+		}
+	}
+	return ""
 }
 
 // KeyIsRandom is a Low cost check to make sure that 'keys' include a number to reduce FPs.

@@ -36,7 +36,7 @@ func (Scanner) Version() int          { return 1 }
 func (Scanner) CloudEndpoint() string { return "https://api.github.com" }
 
 var (
-	keyPat = regexp.MustCompile(`(?:(?i:github|token)|(?-i:GH|gh|HUB|[Hh]ub|PAT|[Pp]at|OCTO|[Oo]cto))[^\.].{0,40}[ =:'"]+([a-f0-9]{40})\b`)
+	keyPat = regexp.MustCompile(detectors.PrefixOrSuffixRegex([]string{`(?:(?i:github|token)|(?-i:GH|gh|HUB|[Hh]ub|PAT|[Pp]at|OCTO|[Oo]cto))`}, `\b([a-f0-9]{40})\b`))
 )
 
 // Keywords are used for efficiently pre-filtering chunks.
@@ -51,7 +51,7 @@ func (s Scanner) FromData(ctx context.Context, verify bool, data []byte) (result
 
 	uniqueMatches := make(map[string]struct{})
 	for _, match := range keyPat.FindAllStringSubmatch(dataStr, -1) {
-		m := match[1]
+		m := detectors.FirstNonEmptyMatch(match)
 		// Ignore low-entropy matches.
 		if detectors.StringShannonEntropy(m) < 3 {
 			continue
